@@ -25,7 +25,7 @@ A comprehensive system optimization suite for Ubuntu and other Linux distributio
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/ubuntoptimizer.git
+git clone https://github.com/120git/ubuntoptimizer.git
 cd ubuntoptimizer
 ```
 
