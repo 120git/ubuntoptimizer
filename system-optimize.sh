@@ -21,8 +21,36 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
+CYAN='\033[96m'
 NC='\033[0m' # No Color
 BOLD='\033[1m'
+
+# ASCII neon llama logo (inspired by provided image)
+print_logo() {
+        # Print in bright cyan, then reset color
+        echo -ne "${CYAN}"
+        cat <<'ASCII_EOF'
+                                ___________________________
+                         .-':                         :`-.
+                     .'   :  _                  _    :   `.
+                    /     : (_)  .--.  .--.   (_)    :     \
+                 ;      :     / __ \/ __ \         :      ;
+                 |      |    / /  \/  \ \ \        |      |
+                 |      |   / / .----. \ \ \       |      |
+                 ;      |  /_/ /\____/\ \_\_\      |      ;
+                    \     :     /  __  \     :      :     /
+                     `.   :    |  (__)  |    :     :   .'
+                         `-.:_   |   --   |   _;_.-.'
+                                 ( `-.\______/.-' )
+                                    `--..____..--'
+                                 .-._  .--.  _.-.
+                             .'    `' /\ `'    `.
+                            /  .-""-.|  |.-""-.  \
+                            \_/  (__)|__|(__)  \_/
+                                 ubuntoptimizer – neon llama
+ASCII_EOF
+        echo -e "${NC}"
+}
 
 # Function to log messages
 log() {
@@ -350,6 +378,7 @@ optimize_system() {
 # Function to show menu
 show_menu() {
     clear
+    print_logo
     echo -e "${BLUE}================================${NC}"
     echo -e "${BOLD}Ultimate System Optimization Suite${NC}"
     echo -e "${BLUE}================================${NC}"
