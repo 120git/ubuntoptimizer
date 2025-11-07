@@ -25,31 +25,28 @@ CYAN='\033[96m'
 NC='\033[0m' # No Color
 BOLD='\033[1m'
 
-# ASCII neon llama logo (inspired by provided image)
+# ASCII Cool Llama logo
 print_logo() {
-        # Print in bright cyan, then reset color
-        echo -ne "${CYAN}"
-        cat <<'ASCII_EOF'
-                                ___________________________
-                         .-':                         :`-.
-                     .'   :  _                  _    :   `.
-                    /     : (_)  .--.  .--.   (_)    :     \
-                 ;      :     / __ \/ __ \         :      ;
-                 |      |    / /  \/  \ \ \        |      |
-                 |      |   / / .----. \ \ \       |      |
-                 ;      |  /_/ /\____/\ \_\_\      |      ;
-                    \     :     /  __  \     :      :     /
-                     `.   :    |  (__)  |    :     :   .'
-                         `-.:_   |   --   |   _;_.-.'
-                                 ( `-.\______/.-' )
-                                    `--..____..--'
-                                 .-._  .--.  _.-.
-                             .'    `' /\ `'    `.
-                            /  .-""-.|  |.-""-.  \
-                            \_/  (__)|__|(__)  \_/
-                                 ubuntoptimizer – neon llama
+    echo -ne "${CYAN}"
+    cat <<'ASCII_EOF'
+              
+           ██████╗ ██████╗  ██████╗ ██╗         
+          ██╔════╝██╔═══██╗██╔═══██╗██║         
+          ██║     ██║   ██║██║   ██║██║         
+          ██║     ██║   ██║██║   ██║██║         
+          ╚██████╗╚██████╔╝╚██████╔╝███████╗    
+           ╚═════╝ ╚═════╝  ╚═════╝ ╚══════╝    
+                                                 
+          ██╗     ██╗      █████╗ ███╗   ███╗ █████╗ 
+          ██║     ██║     ██╔══██╗████╗ ████║██╔══██╗
+          ██║     ██║     ███████║██╔████╔██║███████║
+          ██║     ██║     ██╔══██║██║╚██╔╝██║██╔══██║
+          ███████╗███████╗██║  ██║██║ ╚═╝ ██║██║  ██║
+          ╚══════╝╚══════╝╚═╝  ╚═╝╚═╝     ╚═╝╚═╝  ╚═╝
+                                                 
+            System Optimizer for Ubuntu & Friends
 ASCII_EOF
-        echo -e "${NC}"
+    echo -e "${NC}"
 }
 
 # Function to log messages
@@ -379,9 +376,9 @@ optimize_system() {
 show_menu() {
     clear
     print_logo
-    echo -e "${BLUE}================================${NC}"
-    echo -e "${BOLD}Ultimate System Optimization Suite${NC}"
-    echo -e "${BLUE}================================${NC}"
+    echo -e "${BLUE}════════════════════════════════════════${NC}"
+    echo -e "${BOLD}       Cool Llama System Optimizer${NC}"
+    echo -e "${BLUE}════════════════════════════════════════${NC}"
     echo -e "1) Run Full System Optimization"
     echo -e "2) Update System Only"
     echo -e "3) Optimize System Only"
