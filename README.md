@@ -1,123 +1,148 @@
-# Cool Llama Linux Optimizer
+# Cool Llama Linux Optimizer (ubopt)
 
-## Head-of-Production Agent Prompt
+"Cool Llama" is an enterprise-grade, modular Linux optimization & security toolkit.
 
-You are the **Head-of-Production Agent** for the Cool Llama Linux Optimizer project. Your role is to architect, scaffold, and deliver a world-class, production-ready Linux system optimization toolkit.
+It started life as a single Bash script (`system-optimize.sh`) and has evolved into a structured, provider‑aware CLI (`ubopt`) with separate modules for updates, hardening, health reporting, backups, benchmarking, and logging. This README unifies the legacy script feature list with the new modular architecture and sets out the roadmap toward a richer future implementation.
 
-### Project Overview
-Cool Llama Linux Optimizer is a comprehensive, modular system optimization suite designed for Ubuntu and other Linux distributions. It features:
+## Logo
 
-- **Interactive CLI** with beautiful TUI (Terminal User Interface)
-- **Modular architecture** for easy extension and maintenance
-- **Automated system optimization** with safety checks and rollback capabilities
-- **System health monitoring** and performance benchmarking
-- **Comprehensive logging** and backup functionality
-- **Package manager support** for Ubuntu, Debian, Fedora, RHEL, Arch, and more
+```
+              
+           ██████╗ ██████╗  ██████╗ ██╗         
+          ██╔════╝██╔═══██╗██╔═══██╗██║         
+          ██║     ██║   ██║██║   ██║██║         
+          ██║     ██║   ██║██║   ██║██║         
+          ╚██████╗╚██████╔╝╚██████╔╝███████╗    
+           ╚═════╝ ╚═════╝  ╚═════╝ ╚══════╝    
+                                                 
+          ██╗     ██╗      █████╗ ███╗   ███╗ █████╗ 
+          ██║     ██║     ██╔══██╗████╗ ████║██╔══██╗
+          ██║     ██║     ███████║██╔████╔██║███████║
+          ██║     ██║     ██╔══██║██║╚██╔╝██║██╔══██║
+          ███████╗███████╗██║  ██║██║ ╚═╝ ██║██║  ██║
+          ╚══════╝╚══════╝╚═╝  ╚═╝╚═╝     ╚═╝╚═╝  ╚═╝
+                                                 
+            System Optimizer for Ubuntu & Friends
+```
+## Overview
 
-### Your Mission
-Create a complete, enterprise-grade project structure with:
+`ubopt` provides:
 
-1. **Core Application Architecture**
-   - Modular Python-based CLI with Click or Typer
-   - Service-oriented design with clear separation of concerns
-   - Configuration management (YAML/TOML)
-   - Plugin system for extensibility
+* Cross‑distro package update abstraction (apt, dnf, pacman)
+* Security hardening baseline (SSH, sysctl, firewall)
+* Health reporting (JSON & human)
+* Configuration backups
+* Performance benchmarking (CPU & disk)
+* Structured JSON logging with rotation & syslog fallback
+* Dry‑run mode for every mutating action
+* Systemd timer for scheduled security updates
 
-2. **Project Structure**
-   ```
-   cool-llama-linuxoptimizer/
-   ├── src/
-   │   ├── cool_llama/
-   │   │   ├── __init__.py
-   │   │   ├── cli.py              # Main CLI interface
-   │   │   ├── config.py           # Configuration management
-   │   │   ├── core/               # Core optimization logic
-   │   │   │   ├── system.py       # System detection & info
-   │   │   │   ├── packages.py     # Package management
-   │   │   │   ├── optimizer.py    # System optimization
-   │   │   │   └── monitor.py      # Health monitoring
-   │   │   ├── utils/              # Utilities
-   │   │   │   ├── logger.py       # Logging system
-   │   │   │   ├── backup.py       # Backup functionality
-   │   │   │   └── benchmark.py    # Performance testing
-   │   │   └── ui/                 # User interface
-   │   │       ├── menu.py         # Interactive menus
-   │   │       └── display.py      # Output formatting
-   ├── tests/                      # Comprehensive test suite
-   ├── docs/                       # Documentation
-   ├── config/                     # Default configurations
-   ├── scripts/                    # Installation & setup scripts
-   ├── .github/workflows/          # CI/CD pipelines
-   ├── pyproject.toml              # Python project config
-   ├── setup.py                    # Setup configuration
-   ├── requirements.txt            # Dependencies
-   ├── Makefile                    # Build automation
-   ├── LICENSE                     # MIT License
-   └── README.md                   # This file
-   ```
+The legacy `system-optimize.sh` interactive menu remains for simple one‑off optimization; the modular CLI is the strategic path forward.
 
-3. **Key Features to Implement**
-   - Rich TUI using `rich` library for beautiful terminal output
-   - Async operations for performance using `asyncio`
-   - Safety mechanisms: dry-run mode, confirmation prompts, automatic backups
-   - Rollback capabilities for all system changes
-   - Detailed logging with rotation
-   - Configuration profiles (conservative, balanced, aggressive)
-   - Plugin system for custom optimizations
-   - Progress bars and real-time status updates
-   - System health dashboard
-   - Scheduled optimization support via cron
-   - Multi-distribution support with detection
+## Current Features (Bash CLI)
 
-4. **Quality Standards**
-   - Type hints throughout (Python 3.9+)
-   - Comprehensive docstrings (Google style)
-   - Unit tests with pytest (>90% coverage)
-   - Integration tests for critical paths
-   - Error handling with custom exceptions
-   - Input validation and sanitization
-   - Security best practices (no shell injection, proper sudo handling)
+* Update management: check, apply, security‑only
+* Hardening: SSH lockdown, sysctl tuning, firewall enable (ufw/firewalld)
+* Health: uptime, load, memory, disk, CPU load JSON
+* Backup: key configuration snapshots with timestamp
+* Benchmark: simple CPU timing + disk throughput
+* Logging: JSON events + human helpers, rotation module
+* Report: combined health + update summary
+* Legacy script: menu‑driven optimization tasks
 
-5. **DevOps & Tooling**
-   - GitHub Actions for CI/CD
-   - Pre-commit hooks (black, isort, flake8, mypy)
-   - Automated releases with semantic versioning
-   - Docker support for testing
-   - Documentation auto-generation with Sphinx
-   - Changelog automation
+## Requirements
 
-6. **Documentation Requirements**
-   - Comprehensive README with badges
-   - Installation guide (pip, apt, manual)
-   - Usage examples and tutorials
-   - API documentation
-   - Contributing guidelines
-   - Security policy
-   - FAQ section
+* Bash 5+
+* Standard coreutils
+* Package manager (apt/dnf/pacman) depending on distro
+* Optional: `shellcheck`, `bats` for development
+* Root/sudo for applying changes (dry‑run works unprivileged)
 
-7. **Branding**
-   - Use the "Cool Llama" ASCII logo in cyan
-   - Consistent color scheme: cyan primary, blue secondary
-   - Professional yet friendly tone
-   - Emoji usage for visual clarity (🦙 ✨ 🚀 ⚡ 🛡️)
+## Quick Start (Repository Clone)
 
-### Success Criteria
-- Clean, maintainable, well-documented code
-- Zero-configuration installation experience
-- Safe by default, powerful when needed
-- Professional logging and error messages
-- Comprehensive test coverage
-- Production-ready security posture
-- Beautiful, intuitive user experience
+Clone the repository:
+```bash
+git clone https://github.com/120git/ubuntoptimizer.git
+cd ubuntoptimizer
+cd cool-llama-linuxoptimizer
+```
 
-### Next Steps
-After you complete the scaffolding, generate a **GitHub Copilot Agent prompt** that will:
-1. Implement all core modules with full functionality
-2. Create comprehensive tests
-3. Set up CI/CD workflows
-4. Write complete documentation
-5. Configure all tooling and automation
+### Use the modular CLI (`ubopt`)
 
----
+Run help:
+```bash
+./cmd/ubopt --help
+```
 
-**Let's build something awesome! 🦙✨**
+Install system‑wide (optional):
+```bash
+sudo make install
+ubopt update check
+```
+
+### Legacy menu script
+
+```bash
+sudo ./system-optimize.sh
+```
+
+## Logs & Backups
+
+* Modular CLI logs: `/var/log/ubopt/*.log` (fallback to `./logs/` if not root)
+* Backups: `/var/backups/ubopt/` (or working directory in dry‑run)
+
+## Supported Distributions
+
+* Ubuntu / Debian family
+* Fedora / RHEL / CentOS
+* Arch / Manjaro
+
+Automatic detection selects provider; unsupported distros can still use generic health and benchmarking.
+
+## Architecture (Bash Phase)
+
+```
+cmd/ubopt                # CLI dispatcher
+lib/common.sh            # Logging, distro detection, shared utils
+providers/apt.sh|...     # Package manager abstraction
+modules/update.sh        # Update orchestration
+modules/hardening.sh     # Security baseline
+modules/health.sh        # Health metrics output
+modules/backup.sh        # Backup routines
+modules/benchmark.sh     # Simple performance tests
+modules/logging.sh       # Log rotation & inspection
+systemd/*.service|*.timer# Scheduled security updates
+tests/bats/*.bats        # Functional tests
+```
+
+## Roadmap (Next Major Iteration)
+
+We plan to migrate to a Python + Typer/Rich implementation with:
+
+* Rich TUI dashboards & progress bars
+* Async operations & concurrency
+* Plugin system for custom optimizations
+* Profile‑driven tuning (conservative / balanced / aggressive)
+* Advanced rollback state tracking
+* Extended benchmarking suite
+* SBOM + signed releases (initial Shell pipeline already prepared)
+
+## Contributing
+
+Pull requests welcome. Please run `make lint test` before submitting and favor small, focused changes. For larger proposals open an issue first.
+
+## License
+
+MIT License – see `LICENSE`.
+
+## Copyright
+
+© 2025 Cool Llama
+
+## Security
+
+Hardening operations strive to be idempotent and reversible (backups created before changes). Always review dry‑run output first on critical systems.
+
+## Acknowledgements
+
+Inspired by community best practices for Linux hardening & maintenance; built to be auditable and minimal.
