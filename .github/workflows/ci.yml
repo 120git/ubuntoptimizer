@@ -1,0 +1,104 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  shellcheck:
+    name: ShellCheck Linting
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Run ShellCheck
+      uses: ludeeus/action-shellcheck@master
+      with:
+        scandir: './cmd ./lib ./providers ./modules'
+        severity: warning
+        ignore_paths: tests
+  
+  bats-tests:
+    name: Bats Tests
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Install Bats
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y bats
+    
+    - name: Run Bats tests
+      run: |
+        bats tests/bats/cli.bats
+        bats tests/bats/health.bats
+        bats tests/bats/update-dryrun.bats
+  
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Test CLI help
+      run: ./cmd/ubopt --help
+    
+    - name: Test health check
+      run: ./cmd/ubopt health
+    
+    - name: Test health JSON
+      run: ./cmd/ubopt health --json
+    
+    - name: Test update check (dry-run)
+      run: ./cmd/ubopt update check --dry-run
+    
+    - name: Test update apply (dry-run)
+      run: ./cmd/ubopt update apply --dry-run
+    
+    - name: Test hardening (dry-run)
+      run: sudo ./cmd/ubopt hardening apply --dry-run || true
+    
+    - name: Test benchmark
+      run: ./cmd/ubopt benchmark
+  
+  code-quality:
+    name: Code Quality Checks
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Check for TODO/FIXME
+      run: |
+        if grep -r "FIXME\|TODO" cmd/ lib/ providers/ modules/ 2>/dev/null; then
+          echo "Found TODO/FIXME comments"
+          exit 0  # Warning only
+        fi
+    
+    - name: Check file permissions
+      run: |
+        # Verify all .sh files are executable
+        find cmd lib providers modules -type f -name "*.sh" ! -executable -print
+        # Verify ubopt is executable
+        test -x cmd/ubopt
+    
+    - name: Verify no hardcoded secrets
+      run: |
+        if grep -r -i "password\|secret\|api[_-]key" cmd/ lib/ providers/ modules/ 2>/dev/null | grep -v "# " | grep -v "PasswordAuthentication"; then
+          echo "⚠️  Potential hardcoded secrets found"
+          exit 1
+        fi

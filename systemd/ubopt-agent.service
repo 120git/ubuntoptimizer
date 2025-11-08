@@ -1,0 +1,22 @@
+[Unit]
+Description=Cool Llama System Update Agent
+Documentation=https://github.com/120git/cool-llama-linuxoptimizer
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/ubopt update apply --security
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=ubopt-agent
+
+# Security hardening
+PrivateTmp=yes
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/var/log/ubopt /var/backups/ubopt
+
+[Install]
+WantedBy=multi-user.target

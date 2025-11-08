@@ -1,0 +1,293 @@
+#!/usr/bin/env bash
+# =============================================================================
+# Cool Llama Linux Optimizer (ubopt) - Main CLI Entrypoint
+# Enterprise-grade Linux system optimization and security toolkit
+# =============================================================================
+
+set -Eeuo pipefail
+
+# Determine script directory
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." &>/dev/null && pwd)"
+
+# Source common library
+# shellcheck source=../lib/common.sh
+source "${SCRIPT_DIR}/lib/common.sh"
+
+# Version
+readonly VERSION="1.0.0"
+
+# =============================================================================
+# LOGO & BRANDING
+# =============================================================================
+
+print_logo() {
+    cat <<'EOF'
+              
+           ██████╗ ██████╗  ██████╗ ██╗         
+          ██╔════╝██╔═══██╗██╔═══██╗██║         
+          ██║     ██║   ██║██║   ██║██║         
+          ██║     ██║   ██║██║   ██║██║         
+          ╚██████╗╚██████╔╝╚██████╔╝███████╗    
+           ╚═════╝ ╚═════╝  ╚═════╝ ╚══════╝    
+                                                 
+          ██╗     ██╗      █████╗ ███╗   ███╗ █████╗ 
+          ██║     ██║     ██╔══██╗████╗ ████║██╔══██╗
+          ██║     ██║     ███████║██╔████╔██║███████║
+          ██║     ██║     ██╔══██║██║╚██╔╝██║██╔══██║
+          ███████╗███████╗██║  ██║██║ ╚═╝ ██║██║  ██║
+          ╚══════╝╚══════╝╚═╝  ╚═╝╚═╝     ╚═╝╚═╝  ╚═╝
+                                                 
+            Linux Optimizer & Security Toolkit v${VERSION}
+EOF
+}
+
+# =============================================================================
+# HELP & USAGE
+# =============================================================================
+
+show_help() {
+    print_logo
+    cat <<'EOF'
+
+Usage: ubopt [OPTIONS] COMMAND [ARGS]
+
+A comprehensive Linux system optimization and security toolkit.
+
+Commands:
+  update              Check and apply system updates
+  hardening           Apply security hardening baseline
+  health              Display system health report
+  backup              Create system configuration backup
+  benchmark           Run system performance benchmark
+  report              Generate comprehensive system report
+
+Global Options:
+  --dry-run          Show what would be done without making changes
+  --verbose, -v      Enable verbose output
+  --help, -h         Show this help message
+  --version          Show version information
+
+Update Options:
+  ubopt update check          Check for available updates
+  ubopt update apply          Apply system updates
+  ubopt update --security     Apply security updates only
+
+Hardening Options:
+  ubopt hardening apply       Apply security hardening baseline
+
+Health Options:
+  ubopt health                Show human-readable health report
+  ubopt health --json         Output health data in JSON format
+
+Examples:
+  ubopt health --json                    # Show health as JSON
+  ubopt update check                     # Check for updates
+  ubopt update apply --dry-run           # Preview updates
+  ubopt hardening apply --dry-run        # Preview hardening changes
+  ubopt benchmark                        # Run performance tests
+
+For more information, visit: https://github.com/120git/cool-llama-linuxoptimizer
+
+EOF
+}
+
+show_version() {
+    echo "Cool Llama Linux Optimizer (ubopt) v${VERSION}"
+    echo "Copyright © 2025"
+    echo "License: MIT"
+}
+
+# =============================================================================
+# COMMAND HANDLERS
+# =============================================================================
+
+cmd_update() {
+    local action="check"
+    local security_only="false"
+    
+    # Parse sub-command
+    if [[ $# -gt 0 ]]; then
+        case "$1" in
+            check)
+                action="check"
+                shift
+                ;;
+            apply)
+                action="apply"
+                shift
+                ;;
+            --security)
+                security_only="true"
+                shift
+                ;;
+        esac
+    fi
+    
+    # Source update module
+    # shellcheck source=../modules/update.sh
+    source "${SCRIPT_DIR}/modules/update.sh"
+    
+    # Execute update
+    update_main "${action}" "${security_only}"
+}
+
+cmd_hardening() {
+    local action="apply"
+    
+    if [[ $# -gt 0 ]] && [[ "$1" == "apply" ]]; then
+        shift
+    fi
+    
+    # Source hardening module
+    # shellcheck source=../modules/hardening.sh
+    source "${SCRIPT_DIR}/modules/hardening.sh"
+    
+    # Execute hardening
+    harden_apply "$@"
+}
+
+cmd_health() {
+    local format="human"
+    
+    # Parse options
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --json)
+                format="json"
+                shift
+                ;;
+            *)
+                shift
+                ;;
+        esac
+    done
+    
+    # Source health module
+    # shellcheck source=../modules/health.sh
+    source "${SCRIPT_DIR}/modules/health.sh"
+    
+    # Execute health check
+    health_check "${format}"
+}
+
+cmd_backup() {
+    # Source backup module
+    # shellcheck source=../modules/backup.sh
+    source "${SCRIPT_DIR}/modules/backup.sh"
+    
+    # Execute backup
+    backup_create "$@"
+}
+
+cmd_benchmark() {
+    # Source benchmark module
+    # shellcheck source=../modules/benchmark.sh
+    source "${SCRIPT_DIR}/modules/benchmark.sh"
+    
+    # Execute benchmark
+    benchmark_run "$@"
+}
+
+cmd_report() {
+    log_info "Generating comprehensive system report..."
+    
+    # Source required modules
+    # shellcheck source=../modules/health.sh
+    source "${SCRIPT_DIR}/modules/health.sh"
+    # shellcheck source=../modules/update.sh
+    source "${SCRIPT_DIR}/modules/update.sh"
+    
+    # Show logo
+    print_logo
+    echo ""
+    
+    # Show health
+    health_check human
+    
+    # Check for updates
+    echo ""
+    log_info "Checking for system updates..."
+    update_check || true
+    
+    echo ""
+    log_success "Report generation complete"
+}
+
+# =============================================================================
+# MAIN
+# =============================================================================
+
+main() {
+    # Parse global options first
+    local show_help_flag=false
+    local remaining_args=()
+    
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --help|-h)
+                show_help_flag=true
+                shift
+                ;;
+            --version)
+                show_version
+                exit 0
+                ;;
+            --dry-run)
+                export UBOPT_DRY_RUN="true"
+                shift
+                ;;
+            --verbose|-v)
+                export UBOPT_VERBOSE="true"
+                shift
+                ;;
+            *)
+                remaining_args+=("$1")
+                shift
+                ;;
+        esac
+    done
+    
+    # Show help if requested or no command
+    if [[ "${show_help_flag}" == "true" ]] || [[ ${#remaining_args[@]} -eq 0 ]]; then
+        show_help
+        exit 0
+    fi
+    
+    # Get command
+    local command="${remaining_args[0]}"
+    unset 'remaining_args[0]'
+    remaining_args=("${remaining_args[@]}")
+    
+    # Dispatch to command handler
+    case "${command}" in
+        update)
+            cmd_update "${remaining_args[@]}"
+            ;;
+        hardening)
+            cmd_hardening "${remaining_args[@]}"
+            ;;
+        health)
+            cmd_health "${remaining_args[@]}"
+            ;;
+        backup)
+            cmd_backup "${remaining_args[@]}"
+            ;;
+        benchmark)
+            cmd_benchmark "${remaining_args[@]}"
+            ;;
+        report)
+            cmd_report "${remaining_args[@]}"
+            ;;
+        *)
+            log_error "Unknown command: ${command}"
+            echo ""
+            show_help
+            exit 1
+            ;;
+    esac
+}
+
+# Run main if executed directly
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    main "$@"
+fi

@@ -1,0 +1,18 @@
+[Unit]
+Description=Cool Llama System Update Agent Timer
+Documentation=https://github.com/120git/cool-llama-linuxoptimizer
+Requires=ubopt-agent.service
+
+[Timer]
+# Run daily at 3:00 AM
+OnCalendar=daily
+OnCalendar=*-*-* 03:00:00
+
+# Run 5 minutes after boot if missed
+Persistent=true
+
+# Randomize start time by up to 30 minutes
+RandomizedDelaySec=30min
+
+[Install]
+WantedBy=timers.target

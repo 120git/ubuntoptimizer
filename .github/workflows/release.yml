@@ -1,0 +1,115 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  build-and-release:
+    name: Build and Release
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    
+    - name: Get version from tag
+      id: get_version
+      run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+    
+    - name: Create release tarball
+      run: |
+        mkdir -p dist
+        tar -czf dist/ubopt-${{ steps.get_version.outputs.VERSION }}.tar.gz \
+          cmd/ lib/ providers/ modules/ etc/ systemd/ docs/ tests/ \
+          Makefile README.md LICENSE
+    
+    - name: Generate checksums
+      working-directory: dist
+      run: |
+        sha256sum *.tar.gz > checksums.txt
+        cat checksums.txt
+
+    - name: Compute artifact subjects (hashes)
+      id: hash
+      uses: slsa-framework/slsa-github-generator/actions/hash-files@v2.0.0
+      with:
+        files: |
+          dist/*.tar.gz
+    
+    - name: Install Syft for SBOM generation
+      run: |
+        curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
+    
+    - name: Generate SBOM
+      run: |
+        syft dir:. -o spdx-json=dist/ubopt-${{ steps.get_version.outputs.VERSION }}-sbom.spdx.json
+        syft dir:. -o cyclonedx-json=dist/ubopt-${{ steps.get_version.outputs.VERSION }}-sbom.cyclonedx.json
+    
+    - name: Install Cosign for signing
+      uses: sigstore/cosign-installer@v3
+    
+    - name: Sign release artifacts
+      env:
+        COSIGN_EXPERIMENTAL: 1
+      run: |
+        cd dist
+        for file in *.tar.gz *.spdx.json *.cyclonedx.json; do
+          cosign sign-blob --yes "$file" --output-signature "${file}.sig"
+        done
+    
+    - name: Generate SLSA provenance
+      uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v2.0.0
+      with:
+        base64-subjects: "${{ steps.hash.outputs.hashes }}"
+        upload-assets: true
+    
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v1
+      with:
+        name: Release ${{ steps.get_version.outputs.VERSION }}
+        body: |
+          ## Cool Llama Linux Optimizer v${{ steps.get_version.outputs.VERSION }}
+          
+          ### Installation
+          ```bash
+          wget https://github.com/${{ github.repository }}/releases/download/v${{ steps.get_version.outputs.VERSION }}/ubopt-${{ steps.get_version.outputs.VERSION }}.tar.gz
+          tar -xzf ubopt-${{ steps.get_version.outputs.VERSION }}.tar.gz
+          cd ubopt-${{ steps.get_version.outputs.VERSION }}
+          sudo make install
+          ```
+          
+          ### Verification
+          ```bash
+          # Verify checksum
+          sha256sum -c checksums.txt
+          
+          # Verify signature (requires cosign)
+          cosign verify-blob \
+            --signature ubopt-${{ steps.get_version.outputs.VERSION }}.tar.gz.sig \
+            ubopt-${{ steps.get_version.outputs.VERSION }}.tar.gz
+          ```
+          
+          ### What's Changed
+          See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md)
+          
+          ### SBOM
+          Software Bill of Materials (SBOM) is included in:
+          - SPDX format: `ubopt-${{ steps.get_version.outputs.VERSION }}-sbom.spdx.json`
+          - CycloneDX format: `ubopt-${{ steps.get_version.outputs.VERSION }}-sbom.cyclonedx.json`
+        files: |
+          dist/*.tar.gz
+          dist/checksums.txt
+          dist/*.sig
+          dist/*-sbom.*.json
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

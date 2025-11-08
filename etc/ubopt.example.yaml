@@ -1,0 +1,61 @@
+# Cool Llama Linux Optimizer Configuration
+# Copy this file to /etc/ubopt/config.yaml and customize as needed
+
+# General settings
+general:
+  # Enable verbose logging
+  verbose: false
+  
+  # Automatic backup before changes
+  auto_backup: true
+  
+  # Log rotation settings
+  log_max_size_mb: 10
+  log_max_files: 5
+
+# Update settings
+update:
+  # Check for updates daily
+  auto_check: true
+  
+  # Apply security updates automatically
+  auto_apply_security: false
+  
+  # Apply all updates automatically (use with caution)
+  auto_apply_all: false
+  
+  # Notification settings
+  notify_on_updates: true
+
+# Hardening settings
+hardening:
+  # Apply SSH hardening
+  harden_ssh: true
+  
+  # Apply sysctl hardening
+  harden_sysctl: true
+  
+  # Configure firewall
+  harden_firewall: true
+
+# Backup settings
+backup:
+  # Backup directory
+  directory: /var/backups/ubopt
+  
+  # Keep backups for (days)
+  retention_days: 30
+
+# Monitoring settings
+monitoring:
+  # Enable system health monitoring
+  enabled: true
+  
+  # Health check interval (minutes)
+  check_interval: 60
+  
+  # Alert thresholds
+  thresholds:
+    disk_usage_percent: 90
+    memory_usage_percent: 90
+    cpu_load_multiplier: 2.0
