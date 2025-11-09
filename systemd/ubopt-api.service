@@ -1,0 +1,23 @@
+[Unit]
+Description=ubopt REST Telemetry API
+After=network.target
+Documentation=https://github.com/120git/ubuntoptimizer
+
+[Service]
+Type=simple
+ExecStart=/usr/lib/ubopt/api/ubopt-api.sh
+Restart=on-failure
+RestartSec=5
+User=root
+Group=root
+# Hardening
+ProtectSystem=full
+ProtectHome=yes
+NoNewPrivileges=yes
+PrivateTmp=yes
+AmbientCapabilities=
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+ReadWritePaths=/var/lib/ubopt /var/log/ubopt /var/lib/node_exporter/textfile_collector
+
+[Install]
+WantedBy=multi-user.target

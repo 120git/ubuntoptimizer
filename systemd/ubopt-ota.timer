@@ -1,0 +1,13 @@
+[Unit]
+Description=ubopt OTA Policy Update Timer
+Documentation=https://github.com/120git/ubuntoptimizer
+Requires=ubopt-ota.service
+
+[Timer]
+OnCalendar=weekly
+OnBootSec=10min
+RandomizedDelaySec=1h
+Persistent=true
+
+[Install]
+WantedBy=timers.target

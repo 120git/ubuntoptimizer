@@ -1,0 +1,37 @@
+# Administrator policy - full system control
+# Allows all modifications including security hardening
+
+role: admin
+description: Full administrative access
+
+# Update settings
+updates:
+  schedule: daily
+  reboot: when-required
+  auto_check: true
+  auto_apply_security: true
+  auto_apply_all: false
+
+# Hardening enabled
+hardening:
+  ssh: true
+  sysctl: true
+  firewall: true
+
+# Backup settings
+backup:
+  directory: /var/backups/ubopt
+  retention_days: 90
+  auto_backup: true
+
+# Report settings
+report:
+  targets:
+    - stdout
+    - file
+    - syslog
+
+# Logging
+logging:
+  level: debug
+  directory: /var/log/ubopt

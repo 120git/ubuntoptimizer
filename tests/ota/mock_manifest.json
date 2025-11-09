@@ -1,0 +1,8 @@
+{
+  "version": "1.0-test",
+  "timestamp": "2025-11-09T00:00:00Z",
+  "policies": [
+    "baseline.yaml"
+  ],
+  "signature": "sha256:mock_signature_for_testing"
+}

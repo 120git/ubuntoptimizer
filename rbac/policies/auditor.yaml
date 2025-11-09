@@ -1,0 +1,35 @@
+# Auditor policy - read-only compliance monitoring
+# No system modifications allowed
+
+role: auditor
+description: Read-only audit and compliance monitoring
+
+# Update settings (read-only)
+updates:
+  schedule: never
+  reboot: never
+  auto_check: false
+  auto_apply_security: false
+  auto_apply_all: false
+
+# Hardening (disabled)
+hardening:
+  ssh: false
+  sysctl: false
+  firewall: false
+
+# Backup (read-only access)
+backup:
+  directory: /var/backups/ubopt
+  retention_days: 30
+  auto_backup: false
+
+# Report settings
+report:
+  targets:
+    - stdout
+
+# Logging
+logging:
+  level: info
+  directory: /var/log/ubopt

@@ -1,0 +1,11 @@
+[Unit]
+Description=ubopt REST Telemetry API Socket Activation
+Documentation=https://github.com/120git/ubuntoptimizer
+
+[Socket]
+ListenStream=127.0.0.1:8080
+NoDelay=true
+ReusePort=yes
+
+[Install]
+WantedBy=sockets.target

@@ -1,0 +1,36 @@
+# Operator policy - standard operations
+# Allows monitoring, reporting, and backups but not system modifications
+
+role: operator
+description: Standard operator access for day-to-day tasks
+
+# Update settings (check only, no apply)
+updates:
+  schedule: daily
+  reboot: never
+  auto_check: true
+  auto_apply_security: false
+  auto_apply_all: false
+
+# Hardening (disabled for operator)
+hardening:
+  ssh: false
+  sysctl: false
+  firewall: false
+
+# Backup enabled
+backup:
+  directory: /var/backups/ubopt
+  retention_days: 30
+  auto_backup: true
+
+# Report settings
+report:
+  targets:
+    - stdout
+    - file
+
+# Logging
+logging:
+  level: info
+  directory: /var/log/ubopt

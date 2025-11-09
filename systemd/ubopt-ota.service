@@ -1,0 +1,23 @@
+[Unit]
+Description=ubopt OTA Policy Update Service
+Documentation=https://github.com/120git/ubuntoptimizer
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/lib/ubopt/tools/ota-sync.sh --apply
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=ubopt-ota
+TimeoutStartSec=300
+
+# Security hardening
+PrivateTmp=yes
+NoNewPrivileges=yes
+ProtectSystem=strict
+ReadWritePaths=/var/log/ubopt /usr/lib/ubopt/policies /var/backups/ubopt
+ProtectHome=yes
+
+[Install]
+WantedBy=multi-user.target

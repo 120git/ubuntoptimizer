@@ -1,0 +1,35 @@
+# ubopt RBAC Role Definitions
+# Roles define permissions for ubopt commands
+# Inheritance: admin > operator > auditor
+
+roles:
+  admin:
+    description: Full system administration access
+    permissions:
+      - update
+      - hardening
+      - backup
+      - report
+      - config_test
+      - view_logs
+      - benchmark
+      - health
+    inherits: []
+
+  operator:
+    description: Day-to-day operations without destructive changes
+    permissions:
+      - report
+      - health
+      - view_logs
+      - backup
+      - benchmark
+    inherits: []
+
+  auditor:
+    description: Read-only monitoring and compliance auditing
+    permissions:
+      - report
+      - health
+      - view_logs
+    inherits: []

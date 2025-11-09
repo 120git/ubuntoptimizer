@@ -1,0 +1,10 @@
+{
+  "version": "1.0",
+  "timestamp": "2025-11-09T00:00:00Z",
+  "policies": [
+    "baseline.yaml",
+    "server-lockdown.yaml",
+    "workstation.yaml"
+  ],
+  "signature": "sha256:placeholder_will_be_replaced_by_actual_signature"
+}
