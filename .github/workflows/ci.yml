@@ -139,3 +139,61 @@ jobs:
           ../*.changes
           ../*.buildinfo
         retention-days: 30
+  
+  container-tests:
+    name: Container Tests (${{ matrix.distro }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - distro: debian:12
+            pkg_manager: apt-get
+            install_cmd: apt-get update && apt-get install -y
+          - distro: fedora:41
+            pkg_manager: dnf
+            install_cmd: dnf install -y
+          - distro: archlinux:latest
+            pkg_manager: pacman
+            install_cmd: pacman -Sy --noconfirm
+    
+    container:
+      image: ${{ matrix.distro }}
+    
+    steps:
+    - name: Install base dependencies
+      run: |
+        ${{ matrix.install_cmd }} bash coreutils grep gawk
+    
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Install shellcheck
+      run: |
+        if [ "${{ matrix.pkg_manager }}" = "apt-get" ]; then
+          apt-get update && apt-get install -y shellcheck
+        elif [ "${{ matrix.pkg_manager }}" = "dnf" ]; then
+          dnf install -y ShellCheck
+        elif [ "${{ matrix.pkg_manager }}" = "pacman" ]; then
+          pacman -Sy --noconfirm shellcheck
+        fi
+    
+    - name: Install bats
+      run: |
+        if [ "${{ matrix.pkg_manager }}" = "apt-get" ]; then
+          apt-get install -y bats
+        elif [ "${{ matrix.pkg_manager }}" = "dnf" ]; then
+          dnf install -y bats
+        elif [ "${{ matrix.pkg_manager }}" = "pacman" ]; then
+          pacman -Sy --noconfirm bats
+        fi
+    
+    - name: Run shellcheck
+      run: |
+        shellcheck cmd/ubopt lib/*.sh modules/*.sh providers/*.sh exporters/*.sh
+    
+    - name: Run bats tests
+      run: |
+        bats tests/bats/cli.bats
+        bats tests/bats/health.bats
+        bats tests/bats/update-dryrun.bats

@@ -1,4 +1,5 @@
 .PHONY: install uninstall test dev lint shellcheck bats ci clean install-logrotate install-exporter package-deb lint-deb
+.PHONY: install uninstall test dev lint shellcheck bats ci clean install-logrotate install-exporter package-deb lint-deb package-rpm
 
 # FHS-compliant defaults for packaging
 PREFIX ?= /usr
@@ -79,3 +80,15 @@ package-deb:
 
 lint-deb:
 	lintian --display-info --display-experimental || true
+
+package-rpm:
+	@echo "Building RPM package..."
+	mkdir -p dist rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
+	tar -czf rpmbuild/SOURCES/ubopt-$(shell grep '^Version:' packaging/rpm/ubopt.spec | awk '{print $$2}').tar.gz \
+		--transform 's,^,ubopt-$(shell grep '^Version:' packaging/rpm/ubopt.spec | awk '{print $$2}')\/,' \
+		cmd/ lib/ providers/ modules/ exporters/ etc/ systemd/ packaging/ docs/ tests/ \
+		Makefile README.md LICENSE
+	rpmbuild --define "_topdir $(PWD)/rpmbuild" -ba packaging/rpm/ubopt.spec
+	mv rpmbuild/RPMS/noarch/*.rpm dist/ 2>/dev/null || true
+	mv rpmbuild/SRPMS/*.rpm dist/ 2>/dev/null || true
+	@echo "RPM packages created in dist/"

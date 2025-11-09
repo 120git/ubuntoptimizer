@@ -44,6 +44,26 @@ jobs:
           cmd/ lib/ providers/ modules/ exporters/ etc/ systemd/ packaging/ debian/ docs/ tests/ \
           Makefile README.md LICENSE
     
+    - name: Install RPM build tools
+      run: |
+        sudo apt-get install -y rpm rpmbuild
+    
+    - name: Build RPM package in Fedora container
+      run: |
+        # Use Docker to build RPM in Fedora environment
+        docker pull fedora:41
+        docker run --rm -v $(pwd):/workspace -w /workspace fedora:41 bash -c "
+          dnf install -y rpm-build rpmdevtools tar gzip &&
+          mkdir -p rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS} &&
+          tar -czf rpmbuild/SOURCES/ubopt-${{ steps.get_version.outputs.VERSION }}.tar.gz \
+            --transform 's,^,ubopt-${{ steps.get_version.outputs.VERSION }}/,' \
+            cmd/ lib/ providers/ modules/ exporters/ etc/ systemd/ packaging/ docs/ tests/ \
+            Makefile README.md LICENSE &&
+          rpmbuild --define '_topdir $(pwd)/rpmbuild' -ba packaging/rpm/ubopt.spec &&
+          cp rpmbuild/RPMS/noarch/*.rpm dist/ 2>/dev/null || true &&
+          cp rpmbuild/SRPMS/*.rpm dist/ 2>/dev/null || true
+        "
+    
     - name: Install Syft for SBOM generation
       run: |
         curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
@@ -59,6 +79,13 @@ jobs:
           syft file:"$DEB_FILE" -o spdx-json=dist/sbom-deb-${{ github.ref_name }}.spdx.json
         fi
     
+    - name: Generate SBOM for RPM package
+      run: |
+        RPM_FILE=$(ls dist/*.noarch.rpm 2>/dev/null | head -n1)
+        if [ -f "$RPM_FILE" ]; then
+          syft packages file:"$RPM_FILE" -o spdx-json=dist/sbom-rpm-${{ github.ref_name }}.spdx.json
+        fi
+    
     - name: Create provenance JSON
       run: |
         cat > dist/provenance-${{ github.ref_name }}.json <<EOF
@@ -72,12 +99,14 @@ jobs:
             "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
             "artifacts": {
               "tarball": "ubopt-${{ steps.get_version.outputs.VERSION }}.tar.gz",
-              "debian": "$(basename $(ls dist/*.deb 2>/dev/null | head -n1) 2>/dev/null || echo 'none')"
+              "debian": "$(basename $(ls dist/*.deb 2>/dev/null | head -n1) 2>/dev/null || echo 'none'),"
+              "rpm": "$(basename $(ls dist/*.noarch.rpm 2>/dev/null | head -n1) 2>/dev/null || echo 'none')"
             }
           },
           "sbom": {
             "directory": "sbom-dir-${{ github.ref_name }}.spdx.json",
-            "debian": "sbom-deb-${{ github.ref_name }}.spdx.json"
+            "debian": "sbom-deb-${{ github.ref_name }}.spdx.json",
+            "rpm": "sbom-rpm-${{ github.ref_name }}.spdx.json"
           },
           "signatures": {
             "algorithm": "cosign",
@@ -97,7 +126,7 @@ jobs:
       run: |
         cd dist
         # Sign each artifact and generate .sig and .pem
-        for file in *.tar.gz *.deb *.spdx.json provenance-*.json 2>/dev/null; do
+        for file in *.tar.gz *.deb *.rpm *.spdx.json provenance-*.json 2>/dev/null; do
           if [ -f "$file" ]; then
             echo "Signing: $file"
             # Sign with private key from secrets
@@ -121,7 +150,7 @@ jobs:
       run: |
         # Create base64-encoded list of artifact hashes for SLSA
         SUBJECTS=""
-        for file in *.tar.gz *.deb; do
+        for file in *.tar.gz *.deb *.rpm; do
           if [ -f "$file" ]; then
             HASH=$(sha256sum "$file" | awk '{print $1}')
             NAME=$(basename "$file")
@@ -155,6 +184,12 @@ jobs:
           sudo dpkg -i ubopt_*.deb
           sudo apt-get install -f  # Fix dependencies if needed
           ```
+         
+           ### Installation from .rpm (Fedora/RHEL/CentOS)
+           ```bash
+           wget https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/ubopt-*.noarch.rpm
+           sudo dnf install ./ubopt-*.noarch.rpm
+           ```
           
           ### Verification
           ```bash
@@ -169,8 +204,9 @@ jobs:
           ```
           
           ### Security & Supply Chain
-          - **SBOM (Directory)**: `sbom-dir-${{ github.ref_name }}.spdx.json`
-          - **SBOM (Debian Package)**: `sbom-deb-${{ github.ref_name }}.spdx.json`
+           - **SBOM (Directory)**: `sbom-dir-${{ github.ref_name }}.spdx.json`  
+           - **SBOM (Debian Package)**: `sbom-deb-${{ github.ref_name }}.spdx.json`  
+           - **SBOM (RPM Package)**: `sbom-rpm-${{ github.ref_name }}.spdx.json`
           - **Provenance**: `provenance-${{ github.ref_name }}.json`
           - **Signatures**: All artifacts signed with Cosign (*.sig files)
           - **Certificates**: Public keys available (*.pem files)
@@ -180,6 +216,7 @@ jobs:
         files: |
           dist/*.tar.gz
           dist/*.deb
+           dist/*.rpm
           dist/*.dsc
           dist/*.changes
           dist/*.buildinfo
