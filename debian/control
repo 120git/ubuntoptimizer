@@ -1,0 +1,13 @@
+Source: ubopt
+Section: admin
+Priority: optional
+Maintainer: Cool Llama <team@cool-llama.dev>
+Build-Depends: debhelper-compat (= 13)
+Standards-Version: 4.7.0
+Rules-Requires-Root: no
+
+Package: ubopt
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: Cool Llama LinuxOptimizer CLI and agent
+ Modular Linux security + updater suite (CLI, systemd agent, exporter, logrotate).

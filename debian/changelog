@@ -1,0 +1,5 @@
+ubopt (0.1.0-1) unstable; urgency=medium
+
+  * Initial packaging of ubopt (CLI, agent, exporter, logrotate).
+
+ -- Cool Llama <team@cool-llama.dev>  Sat, 08 Nov 2025 12:00:00 +0000

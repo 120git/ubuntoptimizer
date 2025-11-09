@@ -1,0 +1,9 @@
+[Unit]
+Description=ubopt Prometheus textfile exporter
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/lib/ubopt/exporters/ubopt_textfile_exporter.sh
+User=root

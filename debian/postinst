@@ -1,0 +1,11 @@
+#!/bin/sh
+set -e
+# ensure runtime dirs
+install -d -m 0755 /var/log/ubopt /var/lib/ubopt
+# enable timers (best-effort; ignore failures on non-systemd containers)
+if command -v systemctl >/dev/null 2>&1; then
+  systemctl daemon-reload || true
+  systemctl enable --now ubopt-agent.timer || true
+  systemctl enable --now ubopt-exporter.timer || true
+fi
+#DEBHELPER#

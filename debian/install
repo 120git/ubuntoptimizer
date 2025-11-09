@@ -1,0 +1,23 @@
+cmd/ubopt                         usr/bin/
+
+lib/common.sh                     usr/lib/ubopt/lib/
+providers/apt.sh                  usr/lib/ubopt/providers/
+providers/dnf.sh                  usr/lib/ubopt/providers/
+providers/pacman.sh               usr/lib/ubopt/providers/
+
+modules/update.sh                 usr/lib/ubopt/modules/
+modules/hardening.sh              usr/lib/ubopt/modules/
+modules/health.sh                 usr/lib/ubopt/modules/
+modules/backup.sh                 usr/lib/ubopt/modules/
+modules/benchmark.sh              usr/lib/ubopt/modules/
+
+exporters/ubopt_textfile_exporter.sh usr/lib/ubopt/exporters/
+
+etc/ubopt.example.yaml            etc/ubopt/ubopt.yaml
+
+systemd/ubopt-agent.service       lib/systemd/system/
+systemd/ubopt-agent.timer         lib/systemd/system/
+systemd/ubopt-exporter.service    lib/systemd/system/
+systemd/ubopt-exporter.timer      lib/systemd/system/
+
+packaging/logrotate/ubopt         etc/logrotate.d/
