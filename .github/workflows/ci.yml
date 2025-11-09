@@ -102,3 +102,40 @@ jobs:
           echo "⚠️  Potential hardcoded secrets found"
           exit 1
         fi
+  
+  package-deb:
+    name: Build Debian Package
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Install packaging tools
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y devscripts debhelper lintian build-essential
+    
+    - name: Build .deb package
+      run: |
+        debuild -us -uc
+    
+    - name: Run lintian (fail on errors only)
+      run: |
+        # Move .deb artifacts to parent directory as debuild does
+        # Run lintian with E (error) severity only
+        cd ..
+        lintian --fail-on error --suppress-tags file-references-package-build-path ubopt_*.deb || exit 1
+        # Show full info for visibility (warnings/info don't fail)
+        lintian --display-info --display-experimental ubopt_*.deb || true
+    
+    - name: Upload .deb artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: debian-package
+        path: |
+          ../*.deb
+          ../*.dsc
+          ../*.changes
+          ../*.buildinfo
+        retention-days: 30

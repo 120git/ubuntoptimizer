@@ -43,7 +43,7 @@ uninstall:
 	@echo "Disable timer with: sudo systemctl disable --now ubopt-agent.timer || true"
 
 shellcheck:
-	shellcheck cmd/ubopt lib/common.sh providers/*.sh modules/*.sh
+	shellcheck cmd/ubopt lib/*.sh providers/*.sh modules/*.sh exporters/*.sh
 
 bats:
 	bats tests/bats/cli.bats

@@ -24,52 +24,115 @@ jobs:
       id: get_version
       run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
     
-    - name: Create release tarball
+    - name: Install packaging tools
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y devscripts debhelper lintian build-essential
+    
+    - name: Build .deb package
+      run: |
+        debuild -us -uc
+    
+    - name: Move .deb artifacts to dist
       run: |
         mkdir -p dist
-        tar -czf dist/ubopt-${{ steps.get_version.outputs.VERSION }}.tar.gz \
-          cmd/ lib/ providers/ modules/ etc/ systemd/ docs/ tests/ \
-          Makefile README.md LICENSE
+        mv ../*.deb ../*.dsc ../*.changes ../*.buildinfo dist/ 2>/dev/null || true
     
-    - name: Generate checksums
-      working-directory: dist
+    - name: Create release tarball
       run: |
-        sha256sum *.tar.gz > checksums.txt
-        cat checksums.txt
-
-    - name: Compute artifact subjects (hashes)
-      id: hash
-      uses: slsa-framework/slsa-github-generator/actions/hash-files@v2.0.0
-      with:
-        files: |
-          dist/*.tar.gz
+        tar -czf dist/ubopt-${{ steps.get_version.outputs.VERSION }}.tar.gz \
+          cmd/ lib/ providers/ modules/ exporters/ etc/ systemd/ packaging/ debian/ docs/ tests/ \
+          Makefile README.md LICENSE
     
     - name: Install Syft for SBOM generation
       run: |
         curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
     
-    - name: Generate SBOM
+    - name: Generate SBOM for repository
       run: |
-        syft dir:. -o spdx-json=dist/ubopt-${{ steps.get_version.outputs.VERSION }}-sbom.spdx.json
-        syft dir:. -o cyclonedx-json=dist/ubopt-${{ steps.get_version.outputs.VERSION }}-sbom.cyclonedx.json
+        syft dir:. -o spdx-json=dist/sbom-dir-${{ github.ref_name }}.spdx.json
+    
+    - name: Generate SBOM for .deb package
+      run: |
+        DEB_FILE=$(ls dist/*.deb | head -n1)
+        if [ -f "$DEB_FILE" ]; then
+          syft file:"$DEB_FILE" -o spdx-json=dist/sbom-deb-${{ github.ref_name }}.spdx.json
+        fi
+    
+    - name: Create provenance JSON
+      run: |
+        cat > dist/provenance-${{ github.ref_name }}.json <<EOF
+        {
+          "version": "1.0",
+          "build": {
+            "ref": "${{ github.ref }}",
+            "sha": "${{ github.sha }}",
+            "runner": "${{ runner.os }}-${{ runner.arch }}",
+            "workflow": "${{ github.workflow }}",
+            "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "artifacts": {
+              "tarball": "ubopt-${{ steps.get_version.outputs.VERSION }}.tar.gz",
+              "debian": "$(basename $(ls dist/*.deb 2>/dev/null | head -n1) 2>/dev/null || echo 'none')"
+            }
+          },
+          "sbom": {
+            "directory": "sbom-dir-${{ github.ref_name }}.spdx.json",
+            "debian": "sbom-deb-${{ github.ref_name }}.spdx.json"
+          },
+          "signatures": {
+            "algorithm": "cosign",
+            "keyless": false
+          }
+        }
+        EOF
+        cat dist/provenance-${{ github.ref_name }}.json
     
     - name: Install Cosign for signing
       uses: sigstore/cosign-installer@v3
     
-    - name: Sign release artifacts
+    - name: Sign all artifacts with Cosign
       env:
-        COSIGN_EXPERIMENTAL: 1
+        COSIGN_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
+        COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
       run: |
         cd dist
-        for file in *.tar.gz *.spdx.json *.cyclonedx.json; do
-          cosign sign-blob --yes "$file" --output-signature "${file}.sig"
+        # Sign each artifact and generate .sig and .pem
+        for file in *.tar.gz *.deb *.spdx.json provenance-*.json 2>/dev/null; do
+          if [ -f "$file" ]; then
+            echo "Signing: $file"
+            # Sign with private key from secrets
+            echo "$COSIGN_KEY" > /tmp/cosign.key
+            cosign sign-blob --key /tmp/cosign.key --yes "$file" --output-signature "${file}.sig"
+            # Generate certificate (using public key derivation)
+            cosign public-key --key /tmp/cosign.key > "${file}.pem" || true
+            rm -f /tmp/cosign.key
+          fi
         done
     
-    - name: Generate SLSA provenance
-      uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v2.0.0
-      with:
-        base64-subjects: "${{ steps.hash.outputs.hashes }}"
-        upload-assets: true
+    - name: Generate checksums
+      working-directory: dist
+      run: |
+        sha256sum *.tar.gz *.deb *.spdx.json provenance-*.json 2>/dev/null > checksums.txt || true
+        cat checksums.txt
+    
+    - name: Compute artifact subjects (hashes for SLSA)
+      id: hash
+      working-directory: dist
+      run: |
+        # Create base64-encoded list of artifact hashes for SLSA
+        SUBJECTS=""
+        for file in *.tar.gz *.deb; do
+          if [ -f "$file" ]; then
+            HASH=$(sha256sum "$file" | awk '{print $1}')
+            NAME=$(basename "$file")
+            SUBJECTS="${SUBJECTS}${NAME}:${HASH},"
+          fi
+        done
+        # Remove trailing comma and base64 encode
+        SUBJECTS="${SUBJECTS%,}"
+        SUBJECTS_B64=$(echo -n "$SUBJECTS" | base64 -w 0)
+        echo "hashes=${SUBJECTS_B64}" >> $GITHUB_OUTPUT
+        echo "Generated SLSA subjects: $SUBJECTS"
     
     - name: Create GitHub Release
       uses: softprops/action-gh-release@v1
@@ -78,37 +141,53 @@ jobs:
         body: |
           ## Cool Llama Linux Optimizer v${{ steps.get_version.outputs.VERSION }}
           
-          ### Installation
+          ### Installation from tarball
           ```bash
-          wget https://github.com/${{ github.repository }}/releases/download/v${{ steps.get_version.outputs.VERSION }}/ubopt-${{ steps.get_version.outputs.VERSION }}.tar.gz
+          wget https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/ubopt-${{ steps.get_version.outputs.VERSION }}.tar.gz
           tar -xzf ubopt-${{ steps.get_version.outputs.VERSION }}.tar.gz
           cd ubopt-${{ steps.get_version.outputs.VERSION }}
           sudo make install
           ```
           
+          ### Installation from .deb (Debian/Ubuntu)
+          ```bash
+          wget https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/ubopt_*.deb
+          sudo dpkg -i ubopt_*.deb
+          sudo apt-get install -f  # Fix dependencies if needed
+          ```
+          
           ### Verification
           ```bash
-          # Verify checksum
+          # Verify checksums
           sha256sum -c checksums.txt
           
-          # Verify signature (requires cosign)
+          # Verify signatures (requires cosign with public key)
           cosign verify-blob \
+            --key ubopt-${{ steps.get_version.outputs.VERSION }}.tar.gz.pem \
             --signature ubopt-${{ steps.get_version.outputs.VERSION }}.tar.gz.sig \
             ubopt-${{ steps.get_version.outputs.VERSION }}.tar.gz
           ```
           
+          ### Security & Supply Chain
+          - **SBOM (Directory)**: `sbom-dir-${{ github.ref_name }}.spdx.json`
+          - **SBOM (Debian Package)**: `sbom-deb-${{ github.ref_name }}.spdx.json`
+          - **Provenance**: `provenance-${{ github.ref_name }}.json`
+          - **Signatures**: All artifacts signed with Cosign (*.sig files)
+          - **Certificates**: Public keys available (*.pem files)
+          
           ### What's Changed
           See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md)
-          
-          ### SBOM
-          Software Bill of Materials (SBOM) is included in:
-          - SPDX format: `ubopt-${{ steps.get_version.outputs.VERSION }}-sbom.spdx.json`
-          - CycloneDX format: `ubopt-${{ steps.get_version.outputs.VERSION }}-sbom.cyclonedx.json`
         files: |
           dist/*.tar.gz
+          dist/*.deb
+          dist/*.dsc
+          dist/*.changes
+          dist/*.buildinfo
           dist/checksums.txt
           dist/*.sig
-          dist/*-sbom.*.json
+          dist/*.pem
+          dist/sbom-*.spdx.json
+          dist/provenance-*.json
         draft: false
         prerelease: false
       env:
