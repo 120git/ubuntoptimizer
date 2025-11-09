@@ -1,0 +1,14 @@
+# Baseline policy: safe defaults for general systems
+updates:
+  schedule: daily
+  reboot: when-required
+hardening:
+  ssh: strict
+  firewall: enabled
+report:
+  targets:
+    - health
+    - updates
+    - hardening
+logging:
+  level: info

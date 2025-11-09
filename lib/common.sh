@@ -6,6 +6,10 @@
 
 set -Eeuo pipefail
 
+# Prevent duplicate sourcing
+[[ -n "${UBOPT_COMMON_LOADED:-}" ]] && return 0
+readonly UBOPT_COMMON_LOADED=1
+
 # =============================================================================
 # GLOBALS
 # =============================================================================
@@ -162,8 +166,10 @@ setup_cleanup_trap() {
 detect_distro() {
     if [[ -f /etc/os-release ]]; then
         # shellcheck disable=SC1091
-        . /etc/os-release
-        UBOPT_DISTRO="${ID}"
+        # Source in subshell to avoid readonly collisions
+        local distro_id
+        distro_id=$(grep '^ID=' /etc/os-release | cut -d= -f2 | tr -d '"')
+        UBOPT_DISTRO="${distro_id}"
         
         case "${UBOPT_DISTRO}" in
             ubuntu|debian|linuxmint|pop)
@@ -193,9 +199,8 @@ detect_distro() {
 # Get distribution pretty name
 get_distro_name() {
     if [[ -f /etc/os-release ]]; then
-        # shellcheck disable=SC1091
-        . /etc/os-release
-        echo "${PRETTY_NAME}"
+        # Extract PRETTY_NAME without sourcing to avoid readonly collisions
+        grep '^PRETTY_NAME=' /etc/os-release | cut -d= -f2 | tr -d '"'
     else
         echo "Unknown"
     fi

@@ -1,0 +1,8 @@
+---
+- name: daemon-reload
+  become: yes
+  shell: systemctl daemon-reload || true
+
+- name: enable timers
+  become: yes
+  shell: systemctl enable --now ubopt-agent.timer ubopt-exporter.timer || true

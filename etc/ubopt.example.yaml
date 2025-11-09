@@ -14,7 +14,13 @@ general:
   log_max_files: 5
 
 # Update settings
-update:
+updates:
+  # Update schedule (cron format or named: daily, weekly)
+  schedule: daily
+  
+  # Reboot policy: never, when-required, always
+  reboot: when-required
+  
   # Check for updates daily
   auto_check: true
   
@@ -30,13 +36,13 @@ update:
 # Hardening settings
 hardening:
   # Apply SSH hardening
-  harden_ssh: true
+  ssh: true
   
   # Apply sysctl hardening
-  harden_sysctl: true
+  sysctl: true
   
   # Configure firewall
-  harden_firewall: true
+  firewall: true
 
 # Backup settings
 backup:
@@ -45,6 +51,21 @@ backup:
   
   # Keep backups for (days)
   retention_days: 30
+
+# Report settings
+report:
+  # Report targets (list)
+  targets:
+    - stdout
+    - file
+
+# Logging settings
+logging:
+  # Log level: debug, info, warn, error
+  level: info
+  
+  # Log directory
+  directory: /var/log/ubopt
 
 # Monitoring settings
 monitoring:

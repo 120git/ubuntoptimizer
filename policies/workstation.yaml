@@ -1,0 +1,13 @@
+# Workstation policy: balanced settings for developer machines
+updates:
+  schedule: weekly
+  reboot: never
+hardening:
+  ssh: relaxed
+  firewall: enabled
+report:
+  targets:
+    - health
+    - updates
+logging:
+  level: debug

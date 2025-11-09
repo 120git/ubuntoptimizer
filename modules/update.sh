@@ -59,6 +59,10 @@ update_check() {
 # Perform system update
 update_apply() {
     local security_only="${1:-false}"
+    local state_dir="/var/lib/ubopt"
+    local state_file="${state_dir}/state.json"
+    local snapshot_label="ubopt-$(date +%Y%m%d_%H%M%S)"
+    local snapshot_path=""
     
     log_info "Starting system update process..."
     
@@ -73,6 +77,16 @@ update_apply() {
         return 1
     fi
     
+    # Pre-update hooks
+    run_pre_update_hooks || return 1
+
+    # Attempt snapshot (best-effort)
+    if [[ "${UBOPT_DRY_RUN}" != "true" ]]; then
+        create_pre_update_snapshot || true
+    else
+        log_info "[DRY-RUN] Snapshot skipped"
+    fi
+
     # Load the appropriate provider
     load_provider "${UBOPT_PROVIDER}"
     
@@ -103,6 +117,27 @@ update_apply() {
     esac
     
     log_success "System update completed successfully"
+
+    # Post-update hooks
+    run_post_update_hooks || true
+
+    # Record snapshot info if any (enriched: last_snapshot + last_snapshot_timestamp)
+    if [[ -n "${UBOPT_SNAPSHOT_PATH:-}" ]]; then
+        if [[ "${UBOPT_DRY_RUN}" == "true" ]]; then
+            log_info "[DRY-RUN] Would record snapshot metadata"
+        else
+            mkdir -p "${state_dir}" 2>/dev/null || true
+            local snap_ts="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            if command -v jq &>/dev/null && [[ -f "${state_file}" ]]; then
+                tmp=$(mktemp)
+                jq -c --arg path "${UBOPT_SNAPSHOT_PATH}" --arg ts "${snap_ts}" '.last_snapshot=$path | .last_snapshot_timestamp=$ts' "${state_file}" > "$tmp" 2>/dev/null || echo '{"last_snapshot":"'"${UBOPT_SNAPSHOT_PATH}"'","last_snapshot_timestamp":"'"${snap_ts}"'"}' > "$tmp"
+                mv "$tmp" "${state_file}" || echo '{"last_snapshot":"'"${UBOPT_SNAPSHOT_PATH}"'","last_snapshot_timestamp":"'"${snap_ts}"'"}' > "${state_file}"
+            else
+                echo '{"last_snapshot":"'"${UBOPT_SNAPSHOT_PATH}"'","last_snapshot_timestamp":"'"${snap_ts}"'"}' > "${state_file}"
+            fi
+            log_info "Snapshot metadata recorded: ${UBOPT_SNAPSHOT_PATH}"
+        fi
+    fi
     return 0
 }
 
@@ -149,6 +184,100 @@ update_full() {
     esac
     
     log_success "Full system upgrade completed successfully"
+    return 0
+}
+
+# Execute pre-update hooks (abort on failure)
+run_pre_update_hooks() {
+    local hook_dir="${SCRIPT_DIR}/hooks/pre-update.d"
+    if [[ ! -d "${hook_dir}" ]]; then
+        log_debug "No pre-update hooks directory"
+        return 0
+    fi
+    local hooks=()
+    mapfile -t hooks < <(find "${hook_dir}" -maxdepth 1 -type f -name "*.sh" | sort)
+    if [[ ${#hooks[@]} -eq 0 ]]; then
+        log_debug "No pre-update hooks found"
+        return 0
+    fi
+    for h in "${hooks[@]}"; do
+        if [[ "${UBOPT_DRY_RUN}" == "true" ]]; then
+            log_info "[DRY-RUN] Would run pre-update hook: ${h}"
+            continue
+        fi
+        if [[ -x "${h}" ]]; then
+            log_info "Running pre-update hook: ${h}"
+            if ! "${h}"; then
+                log_error "Pre-update hook failed: ${h}"; return 1
+            fi
+        else
+            log_warn "Skipping non-executable pre-update hook: ${h}"
+        fi
+    done
+    return 0
+}
+
+# Execute post-update hooks (warn on failure)
+run_post_update_hooks() {
+    local hook_dir="${SCRIPT_DIR}/hooks/post-update.d"
+    if [[ ! -d "${hook_dir}" ]]; then
+        log_debug "No post-update hooks directory"
+        return 0
+    fi
+    local hooks=()
+    mapfile -t hooks < <(find "${hook_dir}" -maxdepth 1 -type f -name "*.sh" | sort)
+    if [[ ${#hooks[@]} -eq 0 ]]; then
+        log_debug "No post-update hooks found"
+        return 0
+    fi
+    for h in "${hooks[@]}"; do
+        if [[ "${UBOPT_DRY_RUN}" == "true" ]]; then
+            log_info "[DRY-RUN] Would run post-update hook: ${h}"
+            continue
+        fi
+        if [[ -x "${h}" ]]; then
+            log_info "Running post-update hook: ${h}"
+            if ! "${h}"; then
+                log_warn "Post-update hook failed: ${h}"; continue
+            fi
+        else
+            log_warn "Skipping non-executable post-update hook: ${h}"
+        fi
+    done
+    return 0
+}
+
+# Create pre-update snapshot for btrfs or zfs root
+create_pre_update_snapshot() {
+    local root_fs
+    root_fs=$(findmnt -n -o FSTYPE / || echo "")
+    case "${root_fs}" in
+        btrfs)
+            local subvol
+            subvol=$(findmnt -n -o SOURCE / | sed 's/.*\[//; s/\]//')
+            local snap_parent="/" # assume default root
+            local snap_path="${snap_parent}ubopt-snapshots/${snapshot_label}"  
+            mkdir -p "${snap_parent}ubopt-snapshots" || true
+            btrfs subvolume snapshot / "${snap_path}" >/dev/null 2>&1 && {
+                UBOPT_SNAPSHOT_PATH="${snap_path}"; export UBOPT_SNAPSHOT_PATH; log_success "btrfs snapshot created: ${snap_path}"; return 0; } || {
+                log_warn "btrfs snapshot failed"; return 1; }
+            ;;
+        zfs)
+            local zroot
+            zroot=$(zfs list -H -o name | grep -E '^rpool/ROOT' | head -n1 || true)
+            if [[ -n "${zroot}" ]]; then
+                local snap_name="${zroot}@${snapshot_label}"
+                if zfs snapshot "${snap_name}" >/dev/null 2>&1; then
+                    UBOPT_SNAPSHOT_PATH="${snap_name}"; export UBOPT_SNAPSHOT_PATH; log_success "ZFS snapshot created: ${snap_name}"; return 0
+                else
+                    log_warn "ZFS snapshot failed"
+                fi
+            fi
+            ;;
+        *)
+            log_debug "Snapshot skipped: unsupported fs ${root_fs}"
+            ;;
+    esac
     return 0
 }
 

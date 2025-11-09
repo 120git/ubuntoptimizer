@@ -1,0 +1,17 @@
+---
+- hosts: all
+  become: yes
+  vars:
+    ubopt_config:
+      updates:
+        schedule: daily
+        reboot: when-required
+      hardening:
+        ssh: strict
+        firewall: enabled
+      report:
+        targets: [health, updates, hardening]
+      logging:
+        level: info
+  roles:
+    - ubopt

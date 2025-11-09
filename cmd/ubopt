@@ -104,6 +104,7 @@ show_version() {
 cmd_update() {
     local action="check"
     local security_only="false"
+    local config_test_file=""
     
     # Parse sub-command
     if [[ $# -gt 0 ]]; then
@@ -120,15 +121,45 @@ cmd_update() {
                 security_only="true"
                 shift
                 ;;
+            config|config-test)
+                action="config-test"
+                shift
+                ;;
         esac
     fi
+
+    # Optional --config FILE for config-test
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --config)
+                config_test_file="$2"; shift 2 ;;
+            *) break ;;
+        esac
+    done
     
     # Source update module
     # shellcheck source=../modules/update.sh
     source "${SCRIPT_DIR}/modules/update.sh"
     
-    # Execute update
-    update_main "${action}" "${security_only}"
+    if [[ "${action}" == "config-test" ]]; then
+        if [[ -z "${config_test_file}" ]]; then
+            config_test_file="${SCRIPT_DIR}/etc/ubopt.example.yaml"
+        fi
+        if [[ ! -f "${config_test_file}" ]]; then
+            log_error "Config file not found: ${config_test_file}"
+            return 2
+        fi
+        if bash "${SCRIPT_DIR}/tools/validate_config.sh" --config "${config_test_file}"; then
+            log_success "Config validation passed for ${config_test_file}"
+            return 0
+        else
+            log_error "Config validation failed for ${config_test_file}"
+            return 1
+        fi
+    else
+        # Execute update
+        update_main "${action}" "${security_only}"
+    fi
 }
 
 cmd_hardening() {
@@ -190,27 +221,9 @@ cmd_benchmark() {
 
 cmd_report() {
     log_info "Generating comprehensive system report..."
-    
-    # Source required modules
-    # shellcheck source=../modules/health.sh
-    source "${SCRIPT_DIR}/modules/health.sh"
-    # shellcheck source=../modules/update.sh
-    source "${SCRIPT_DIR}/modules/update.sh"
-    
-    # Show logo
-    print_logo
-    echo ""
-    
-    # Show health
-    health_check human
-    
-    # Check for updates
-    echo ""
-    log_info "Checking for system updates..."
-    update_check || true
-    
-    echo ""
-    log_success "Report generation complete"
+    # shellcheck source=../modules/report.sh
+    source "${SCRIPT_DIR}/modules/report.sh"
+    report_main
 }
 
 # =============================================================================

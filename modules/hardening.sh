@@ -147,6 +147,7 @@ harden_firewall_firewalld() {
 # Main hardening entry point
 harden_apply() {
     log_info "Applying security hardening baseline..."
+    local changed=false
     
     # Check if we need root
     if [[ "${UBOPT_DRY_RUN}" != "true" ]]; then
@@ -154,12 +155,38 @@ harden_apply() {
     fi
     
     # Apply hardening steps
+    # Determine if settings already applied (simple heuristic)
+    if grep -q "PermitRootLogin no" /etc/ssh/sshd_config 2>/dev/null && \
+       grep -q "net.ipv4.conf.all.rp_filter=1" /etc/sysctl.d/99-ubopt-security.conf 2>/dev/null; then
+        changed=false
+    else
+        changed=true
+    fi
+
     harden_sysctl
     harden_ssh
     harden_firewall
     
     log_success "Security hardening completed"
+    log_info "idempotency changed=${changed}"
     log_warn "Please review changes and restart services as needed"
+
+    # Persist last hardening timestamp in state file
+    if [[ "${UBOPT_DRY_RUN}" != "true" ]]; then
+        local state_dir="/var/lib/ubopt"
+        local state_file="${state_dir}/state.json"
+        local ts
+        ts="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+        mkdir -p "${state_dir}" 2>/dev/null || true
+        if command -v jq &>/dev/null && [[ -f "${state_file}" ]]; then
+            tmp=$(mktemp)
+            jq -c --arg ts "$ts" '.last_hardening_timestamp=$ts' "${state_file}" > "$tmp" 2>/dev/null || echo "{}" > "$tmp"
+            mv "$tmp" "${state_file}" || echo '{"last_hardening_timestamp":"'"$ts"'"}' > "${state_file}"
+        else
+            echo '{"last_hardening_timestamp":"'"$ts"'"}' > "${state_file}"
+        fi
+        log_info "Recorded last_hardening_timestamp=${ts}"
+    fi
 }
 
 # Run hardening if executed directly

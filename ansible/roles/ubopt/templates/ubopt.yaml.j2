@@ -1,0 +1,12 @@
+# Managed by Ansible ubopt role
+updates:
+  schedule: {{ ubopt_config.updates.schedule | default('daily') }}
+  reboot: {{ ubopt_config.updates.reboot | default('when-required') }}
+hardening:
+  ssh: {{ ubopt_config.hardening.ssh | default('strict') }}
+  firewall: {{ ubopt_config.hardening.firewall | default('enabled') }}
+report:
+  targets:{% for t in ubopt_config.report.targets %}
+    - {{ t }}{% endfor %}
+logging:
+  level: {{ ubopt_config.logging.level | default('info') }}

@@ -197,3 +197,14 @@ jobs:
         bats tests/bats/cli.bats
         bats tests/bats/health.bats
         bats tests/bats/update-dryrun.bats
+
+  config-validate:
+    name: Config Validation
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    - name: Run validator on example and policies
+      run: |
+        bash tools/validate_config.sh --config etc/ubopt.example.yaml
+        bash tools/validate_config.sh --dir policies

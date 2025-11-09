@@ -1,0 +1,72 @@
+name: E2E
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  e2e-matrix:
+    name: E2E (${{ matrix.os }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: debian:12
+            pkg_install: "apt-get update && apt-get install -y curl jq bats"
+            install_cmd: "dpkg -i ubopt_*.deb || true"
+          - os: ubuntu:22.04
+            pkg_install: "apt-get update && apt-get install -y curl jq bats"
+            install_cmd: "dpkg -i ubopt_*.deb || true"
+          - os: fedora:41
+            pkg_install: "dnf install -y curl jq bats"
+            install_cmd: "rpm -Uvh ubopt-*.rpm || true"
+          - os: centos:stream9
+            pkg_install: "dnf install -y curl jq bats"
+            install_cmd: "rpm -Uvh ubopt-*.rpm || true"
+          - os: archlinux:latest
+            pkg_install: "pacman -Sy --noconfirm curl jq bats"
+            install_cmd: "bash -c 'echo no-op'"
+    container:
+      image: ${{ matrix.os }}
+
+    steps:
+    - name: Install base tools
+      run: |
+        ${matrix.pkg_install} || true
+
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Attempt package install (fallback to make install)
+      run: |
+        if ls ../*.deb 2>/dev/null; then
+          ${matrix.install_cmd} || true
+        elif ls dist/*.rpm 2>/dev/null; then
+          ${matrix.install_cmd} || true
+        else
+          make install || true
+        fi
+
+    - name: Health JSON
+      run: |
+        ./cmd/ubopt health --json | jq -e '.uptime_seconds' > /dev/null
+
+    - name: Update dry-run
+      run: |
+        ./cmd/ubopt update check --dry-run || true
+
+    - name: Hardening idempotency
+      run: |
+        ./cmd/ubopt hardening apply --dry-run || true
+        FIRST=$(./cmd/ubopt hardening apply --dry-run 2>&1 | grep 'idempotency changed' | tail -n1 | awk -F= '{print $2}')
+        SECOND=$(./cmd/ubopt hardening apply --dry-run 2>&1 | grep 'idempotency changed' | tail -n1 | awk -F= '{print $2}')
+        if [[ "$SECOND" == "true" ]]; then
+          echo "Idempotency failed"; exit 1; fi
+
+    - name: Exporter metrics file
+      run: |
+        ./exporters/ubopt_textfile_exporter.sh
+        test -f /var/lib/node_exporter/textfile_collector/ubopt.prom || echo "WARN: exporter file missing (collector may not be installed)"

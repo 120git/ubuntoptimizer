@@ -1,5 +1,4 @@
-.PHONY: install uninstall test dev lint shellcheck bats ci clean install-logrotate install-exporter package-deb lint-deb
-.PHONY: install uninstall test dev lint shellcheck bats ci clean install-logrotate install-exporter package-deb lint-deb package-rpm
+.PHONY: install uninstall test dev lint shellcheck bats ci clean install-logrotate install-exporter package-deb lint-deb package-rpm config-test e2e-local
 
 # FHS-compliant defaults for packaging
 PREFIX ?= /usr
@@ -11,7 +10,7 @@ BACKUPDIR := /var/backups/ubopt
 
 install:
 	@echo "Installing ubopt CLI to $(BINDIR)"
-	install -d $(BINDIR) /etc/ubopt /var/lib/ubopt $(LIBDIR) $(LIBDIR)/lib $(LIBDIR)/providers $(LIBDIR)/modules $(LIBDIR)/exporters
+	install -d $(BINDIR) /etc/ubopt /var/lib/ubopt $(LIBDIR) $(LIBDIR)/lib $(LIBDIR)/providers $(LIBDIR)/modules $(LIBDIR)/exporters $(LIBDIR)/hooks/pre-update.d $(LIBDIR)/hooks/post-update.d
 	install -m 0755 cmd/ubopt $(BINDIR)/ubopt
 	@echo "Installing configuration to /etc/ubopt"
 	install -m 0644 etc/ubopt.example.yaml /etc/ubopt/ubopt.yaml
@@ -21,6 +20,10 @@ install:
 	install -m 0755 modules/*.sh $(LIBDIR)/modules/
 	@echo "Installing exporter"
 	install -m 0755 exporters/ubopt_textfile_exporter.sh $(LIBDIR)/exporters/
+	@echo "Installing hooks documentation"
+	install -d $(LIBDIR)/hooks/pre-update.d $(LIBDIR)/hooks/post-update.d
+	install -m 0644 hooks/pre-update.d/README.md $(LIBDIR)/hooks/pre-update.d/README.md
+	install -m 0644 hooks/post-update.d/README.md $(LIBDIR)/hooks/post-update.d/README.md
 	@echo "Installing systemd units to $(SYSD_DIR)"
 	install -d $(SYSD_DIR)
 	install -m 0644 systemd/ubopt-agent.service $(SYSD_DIR)/ubopt-agent.service
@@ -92,3 +95,16 @@ package-rpm:
 	mv rpmbuild/RPMS/noarch/*.rpm dist/ 2>/dev/null || true
 	mv rpmbuild/SRPMS/*.rpm dist/ 2>/dev/null || true
 	@echo "RPM packages created in dist/"
+
+config-test:
+	@echo "Validating configuration and policies"
+	tools/validate_config.sh --config etc/ubopt.example.yaml || exit 1
+	@for f in policies/*.yaml; do \
+	  echo "Validating $$f"; tools/validate_config.sh --config $$f || exit 1; \
+	done
+	@echo "Config validation complete"
+
+e2e-local:
+	@echo "Running local smoke tests"
+	tests/e2e/local_smoke.sh
+	@echo "Local E2E smoke completed"

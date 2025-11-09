@@ -1,0 +1,15 @@
+# Server lockdown policy: stricter settings for production servers
+updates:
+  schedule: daily
+  reboot: always
+hardening:
+  ssh: maximum
+  firewall: enabled
+report:
+  targets:
+    - health
+    - updates
+    - hardening
+    - security
+logging:
+  level: warn

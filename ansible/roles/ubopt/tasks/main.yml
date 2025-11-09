@@ -1,0 +1,34 @@
+---
+- name: Ensure ubopt package installed
+  package:
+    name: ubopt
+    state: present
+  ignore_errors: yes
+
+- name: Fallback to make install if package missing
+  shell: |
+    make install
+  args:
+    chdir: "{{ ansible_env.PWD | default('/workspace') }}"
+  when: (ansible_facts.pkg_mgr is defined) and (ansible_facts.pkg_mgr == 'unknown')
+  ignore_errors: yes
+
+- name: Deploy ubopt config
+  template:
+    src: ubopt.yaml.j2
+    dest: /etc/ubopt/ubopt.yaml
+    owner: root
+    group: root
+    mode: '0644'
+  notify:
+    - daemon-reload
+    - enable timers
+
+- name: Ensure log and state directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+  loop:
+    - /var/log/ubopt
+    - /var/lib/ubopt
