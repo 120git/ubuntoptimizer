@@ -1,4 +1,4 @@
-.PHONY: install uninstall test dev lint shellcheck bats ci clean install-logrotate install-exporter package-deb lint-deb package-rpm config-test e2e-local docs
+.PHONY: install uninstall test dev lint shellcheck bats ci clean install-logrotate verify-logrotate install-exporter package-deb lint-deb package-rpm config-test e2e-local docs
 
 # FHS-compliant defaults for packaging
 PREFIX ?= /usr
@@ -78,6 +78,28 @@ install-logrotate:
 	install -d /etc/logrotate.d
 	install -m 0644 packaging/logrotate/ubopt /etc/logrotate.d/ubopt
 
+verify-logrotate:
+	@echo "Verifying logrotate configuration..."
+	@if [ ! -f packaging/logrotate/ubopt ]; then \
+		echo "ERROR: logrotate config file not found: packaging/logrotate/ubopt"; \
+		exit 1; \
+	fi
+	@if command -v logrotate >/dev/null 2>&1; then \
+		echo "Testing logrotate syntax with debug mode..."; \
+		logrotate -d packaging/logrotate/ubopt 2>&1 | head -20; \
+		echo "✓ Logrotate configuration syntax valid"; \
+	else \
+		echo "WARNING: logrotate not installed, skipping syntax check"; \
+		echo "  Install with: apt-get install logrotate (Debian/Ubuntu)"; \
+		echo "              : dnf install logrotate (Fedora/RHEL)"; \
+	fi
+	@if [ -f /etc/logrotate.d/ubopt ]; then \
+		echo "✓ Logrotate config installed at /etc/logrotate.d/ubopt"; \
+	else \
+		echo "⚠ Logrotate config not yet installed"; \
+		echo "  Run: make install-logrotate"; \
+	fi
+
 install-exporter:
 	install -d $(LIBDIR)/exporters /var/lib/node_exporter/textfile_collector
 	install -m 0755 exporters/ubopt_textfile_exporter.sh $(LIBDIR)/exporters/
@@ -120,5 +142,16 @@ e2e-local:
 
 docs:
 	@echo "Building Sphinx docs"
-	sphinx-build -b html docs docs/_build/html || { echo "Docs build failed"; exit 1; }
+	@if [ ! -d docs/_build ]; then mkdir -p docs/_build; fi
+	@if [ ! -d docs/.venv ]; then \
+		python3 -m venv docs/.venv; \
+		echo "Created virtualenv in docs/.venv"; \
+	else \
+		echo "Using existing virtualenv docs/.venv"; \
+	fi
+	. docs/.venv/bin/activate && pip install --upgrade pip >/dev/null 2>&1 || true
+	. docs/.venv/bin/activate && pip install -r docs/requirements.txt >/dev/null 2>&1 || { echo "Failed to install docs requirements"; exit 1; }
+	@echo "Installing docs deps done"
+	@# Pass version into Sphinx (for conf.py 'release')
+	UBOPT_VERSION=$(shell cat VERSION 2>/dev/null || echo dev) docs/.venv/bin/sphinx-build -b html docs docs/_build/html || { echo "Docs build failed"; exit 1; }
 	@echo "Docs built in docs/_build/html"

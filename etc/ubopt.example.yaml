@@ -1,5 +1,5 @@
 # Cool Llama Linux Optimizer Configuration
-# Copy this file to /etc/ubopt/config.yaml and customize as needed
+# Copy this file to /etc/ubopt/ubopt.yaml and customize as needed
 
 # General settings
 general:
@@ -35,22 +35,99 @@ updates:
 
 # Hardening settings
 hardening:
-  # Apply SSH hardening
-  ssh: true
+  # SSH hardening options
+  ssh:
+    enabled: true
+    password_auth: false
+    root_login: false
+    key_only: true
+    port: 22
+    permit_empty_passwords: false
+    challenge_response_auth: false
   
-  # Apply sysctl hardening
-  sysctl: true
+  # Auditd configuration
+  auditd:
+    enabled: true
+    rules:
+      - /etc/passwd
+      - /etc/shadow
+      - /etc/sudoers
+    suid_monitoring: true
   
-  # Configure firewall
-  firewall: true
+  # AppArmor/SELinux
+  mandatory_access_control:
+    enabled: true
+    mode: enforce  # enforce or complain
+  
+  # Sysctl hardening
+  sysctl:
+    enabled: true
+    ipv4_forward: 0
+    ipv6_ra_accept: 0
+    module_loading_disabled: false
+    kernel_dmesg_restrict: 1
+    kernel_kptr_restrict: 2
+  
+  # Apply firewall rules
+  firewall:
+    enabled: true
+    default_policy: drop
 
 # Backup settings
 backup:
-  # Backup directory
-  directory: /var/backups/ubopt
+  # Backup destination directory
+  dest: /var/backups/ubopt
   
-  # Keep backups for (days)
-  retention_days: 30
+  # Paths to include in backup
+  includes:
+    - /etc
+    - /var/lib/ubopt
+    - /usr/lib/ubopt
+  
+  # Paths to exclude from backup
+  excludes:
+    - /etc/ssl/private
+    - /etc/*.cache
+  
+  # Compression method: gz, xz, zstd, none
+  compression: xz
+  
+  # Retention policy
+  retention:
+    count: 7
+    days: 30
+  
+  # Backup mode: tar or rsync
+  mode: tar
+
+# Benchmark settings
+benchmark:
+  # Tests to run (cpu, disk, mem)
+  tests:
+    - cpu
+    - disk
+    - mem
+  
+  # Test duration in seconds
+  duration: 10
+  
+  # Output format: text or json
+  format: text
+  
+  # CPU benchmark options
+  cpu:
+    threads: 0  # 0 = auto-detect, or specify number
+  
+  # Disk benchmark options
+  disk:
+    size_mb: 1024  # Size of test file in MB
+    size_mb: 100
+    direct_io: true
+  
+  # Memory benchmark options
+  mem:
+    workers: 4
+    size_mb: 256
 
 # Report settings
 report:
@@ -58,6 +135,14 @@ report:
   targets:
     - stdout
     - file
+  
+  # Include sections
+  sections:
+    - system_info
+    - updates
+    - hardening
+    - health
+    - benchmark
 
 # Logging settings
 logging:
@@ -66,6 +151,12 @@ logging:
   
   # Log directory
   directory: /var/log/ubopt
+  
+  # JSON format logs
+  json: true
+  
+  # Syslog integration
+  syslog: true
 
 # Monitoring settings
 monitoring:
@@ -80,3 +171,4 @@ monitoring:
     disk_usage_percent: 90
     memory_usage_percent: 90
     cpu_load_multiplier: 2.0
+    updates_overdue_days: 7

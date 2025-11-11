@@ -23,6 +23,13 @@ UBOPT_VERBOSE="${UBOPT_VERBOSE:-false}"
 UBOPT_DISTRO=""
 UBOPT_PROVIDER=""
 
+# Exit codes
+readonly EXIT_OK=0
+readonly EXIT_CHANGES_PLANNED=20
+readonly EXIT_ERROR=30
+readonly EXIT_UNSUPPORTED=40
+readonly EXIT_POLICY_VIOLATION=50
+
 # Colors
 readonly COLOR_CYAN='\033[96m'
 readonly COLOR_GREEN='\033[0;32m'
@@ -145,7 +152,8 @@ error_handler() {
 
 # Set up error trap
 setup_error_trap() {
-    trap 'error_handler ${LINENO} ${BASH_LINENO} "${FUNCNAME[0]}"' ERR
+    # Ignore planned-changes dry-run exit code (20) to prevent noisy error logs
+    trap 'rc=$?; if [[ $rc -ne 20 ]]; then error_handler ${LINENO} ${BASH_LINENO} "${FUNCNAME[0]:-main}"; fi' ERR
 }
 
 # Cleanup trap handler
@@ -209,6 +217,14 @@ get_distro_name() {
 # =============================================================================
 # UTILITY FUNCTIONS
 # =============================================================================
+
+# Detect if systemd is available
+systemd_detect() {
+    if command -v systemctl &>/dev/null && systemctl --version &>/dev/null; then
+        return 0
+    fi
+    return 1
+}
 
 # Check if running as root
 require_root() {
@@ -343,4 +359,11 @@ init_common() {
 # Auto-initialize when sourced
 if [[ "${BASH_SOURCE[0]}" != "${0}" ]]; then
     init_common
+fi
+
+# Source config parser if available
+SCRIPT_DIR="${SCRIPT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+if [[ -f "${SCRIPT_DIR}/tools/config.sh" ]]; then
+    # shellcheck source=../tools/config.sh
+    source "${SCRIPT_DIR}/tools/config.sh"
 fi

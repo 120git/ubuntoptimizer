@@ -8,6 +8,8 @@ on:
 permissions:
   contents: write
   packages: write
+  attestations: write
+  id-token: write
 
 jobs:
   build-and-release:
@@ -43,6 +45,11 @@ jobs:
         tar -czf dist/ubopt-${{ steps.get_version.outputs.VERSION }}.tar.gz \
           cmd/ lib/ providers/ modules/ exporters/ etc/ systemd/ packaging/ debian/ docs/ tests/ \
           Makefile README.md LICENSE
+
+    - name: Build Sphinx docs
+      run: |
+        make docs
+        tar -czf dist/docs-html-${{ github.ref_name }}.tar.gz -C docs/_build html
     
     - name: Install RPM build tools
       run: |
@@ -71,6 +78,10 @@ jobs:
     - name: Generate SBOM for repository
       run: |
         syft dir:. -o spdx-json=dist/sbom-dir-${{ github.ref_name }}.spdx.json
+
+    - name: Generate SBOM for API component
+      run: |
+        syft dir:api -o spdx-json=dist/sbom-api-${{ github.ref_name }}.spdx.json || true
     
     - name: Generate SBOM for .deb package
       run: |
@@ -85,6 +96,14 @@ jobs:
         if [ -f "$RPM_FILE" ]; then
           syft packages file:"$RPM_FILE" -o spdx-json=dist/sbom-rpm-${{ github.ref_name }}.spdx.json
         fi
+
+    - name: Generate build provenance (GitHub native attestation)
+      uses: actions/attest-build-provenance@v1
+      with:
+        subject-path: |
+          dist/ubopt-${{ steps.get_version.outputs.VERSION }}.tar.gz
+          dist/*.deb
+          dist/*.rpm
     
     - name: Create provenance JSON
       run: |
@@ -116,32 +135,30 @@ jobs:
         EOF
         cat dist/provenance-${{ github.ref_name }}.json
     
-    - name: Install Cosign for signing
-      uses: sigstore/cosign-installer@v3
-    
-    - name: Sign all artifacts with Cosign
-      env:
-        COSIGN_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
-        COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
-      run: |
-        cd dist
-        # Sign each artifact and generate .sig and .pem
-        for file in *.tar.gz *.deb *.rpm *.spdx.json provenance-*.json 2>/dev/null; do
-          if [ -f "$file" ]; then
-            echo "Signing: $file"
-            # Sign with private key from secrets
-            echo "$COSIGN_KEY" > /tmp/cosign.key
-            cosign sign-blob --key /tmp/cosign.key --yes "$file" --output-signature "${file}.sig"
-            # Generate certificate (using public key derivation)
-            cosign public-key --key /tmp/cosign.key > "${file}.pem" || true
-            rm -f /tmp/cosign.key
-          fi
-        done
-    
+    # Optional cosign signing block (requires secrets). Commented out by default.
+    # - name: Install Cosign for signing
+    #   uses: sigstore/cosign-installer@v3
+    # - name: Sign all artifacts with Cosign
+    #   if: ${{ secrets.COSIGN_PRIVATE_KEY != '' }}
+    #   env:
+    #     COSIGN_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
+    #     COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
+    #   run: |
+    #     cd dist
+    #     for file in *.tar.gz *.deb *.rpm *.spdx.json provenance-*.json 2>/dev/null; do
+    #       if [ -f "$file" ]; then
+    #         echo "Signing: $file"
+    #         echo "$COSIGN_KEY" > /tmp/cosign.key
+    #         cosign sign-blob --key /tmp/cosign.key --yes "$file" --output-signature "${file}.sig"
+    #         cosign public-key --key /tmp/cosign.key > "${file}.pem" || true
+    #         rm -f /tmp/cosign.key
+    #       fi
+    #     done
+
     - name: Generate checksums
       working-directory: dist
       run: |
-        sha256sum *.tar.gz *.deb *.spdx.json provenance-*.json 2>/dev/null > checksums.txt || true
+        sha256sum *.tar.gz *.deb *.rpm *.spdx.json provenance-*.json 2>/dev/null > checksums.txt || true
         cat checksums.txt
     
     - name: Compute artifact subjects (hashes for SLSA)
@@ -216,7 +233,7 @@ jobs:
         files: |
           dist/*.tar.gz
           dist/*.deb
-           dist/*.rpm
+          dist/*.rpm
           dist/*.dsc
           dist/*.changes
           dist/*.buildinfo

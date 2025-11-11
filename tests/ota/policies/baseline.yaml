@@ -1,0 +1,14 @@
+# Minimal baseline policy for CI OTA tests
+version: 1
+name: baseline
+rules:
+  - id: hardening-kernel-params
+    action: ensure
+    params:
+      sysctl:
+        net.ipv4.ip_forward: 0
+        net.ipv4.conf.all.accept_source_route: 0
+  - id: package-updates
+    action: check
+    params:
+      provider: auto

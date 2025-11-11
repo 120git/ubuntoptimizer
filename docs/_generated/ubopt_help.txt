@@ -1,0 +1,57 @@
+              
+           ██████╗ ██████╗  ██████╗ ██╗         
+          ██╔════╝██╔═══██╗██╔═══██╗██║         
+          ██║     ██║   ██║██║   ██║██║         
+          ██║     ██║   ██║██║   ██║██║         
+          ╚██████╗╚██████╔╝╚██████╔╝███████╗    
+           ╚═════╝ ╚═════╝  ╚═════╝ ╚══════╝    
+                                                 
+          ██╗     ██╗      █████╗ ███╗   ███╗ █████╗ 
+          ██║     ██║     ██╔══██╗████╗ ████║██╔══██╗
+          ██║     ██║     ███████║██╔████╔██║███████║
+          ██║     ██║     ██╔══██║██║╚██╔╝██║██╔══██║
+          ███████╗███████╗██║  ██║██║ ╚═╝ ██║██║  ██║
+          ╚══════╝╚══════╝╚═╝  ╚═╝╚═╝     ╚═╝╚═╝  ╚═╝
+                                                 
+            Linux Optimizer & Security Toolkit v${VERSION}
+
+Usage: ubopt [OPTIONS] COMMAND [ARGS]
+
+A comprehensive Linux system optimization and security toolkit.
+
+Commands:
+  update              Check and apply system updates
+  hardening           Apply security hardening baseline
+  health              Display system health report
+  backup              Create system configuration backup
+  benchmark           Run system performance benchmark
+  report              Generate comprehensive system report
+
+Global Options:
+  --role ROLE        Set RBAC role (admin, operator, auditor)
+  --dry-run          Show what would be done without making changes
+  --verbose, -v      Enable verbose output
+  --help, -h         Show this help message
+  --version          Show version information
+
+Update Options:
+  ubopt update check          Check for available updates
+  ubopt update apply          Apply system updates
+  ubopt update --security     Apply security updates only
+
+Hardening Options:
+  ubopt hardening apply       Apply security hardening baseline
+
+Health Options:
+  ubopt health                Show human-readable health report
+  ubopt health --json         Output health data in JSON format
+
+Examples:
+  ubopt health --json                    # Show health as JSON
+  ubopt update check                     # Check for updates
+  ubopt update apply --dry-run           # Preview updates
+  ubopt hardening apply --dry-run        # Preview hardening changes
+  ubopt benchmark                        # Run performance tests
+
+For more information, visit: https://github.com/120git/cool-llama-linuxoptimizer
+
