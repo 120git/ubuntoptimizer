@@ -6,8 +6,14 @@
 
 set -Eeuo pipefail
 
-# Determine script directory
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." &>/dev/null && pwd)"
+# Determine script directory and library paths
+if [[ -f "/usr/lib/ubopt/lib/common.sh" ]]; then
+    # Installed system-wide
+    SCRIPT_DIR="/usr/lib/ubopt"
+else
+    # Running from source
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." &>/dev/null && pwd)"
+fi
 
 # Source common library
 # shellcheck source=../lib/common.sh

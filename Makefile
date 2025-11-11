@@ -16,11 +16,13 @@ install:
 	install -m 0644 rbac/roles.yaml $(LIBDIR)/rbac/roles.yaml || true
 	install -m 0755 api/ubopt-api.sh $(LIBDIR)/api/ubopt-api.sh || true
 	install -m 0755 tools/ota-sync.sh $(LIBDIR)/tools/ota-sync.sh || true
+	install -m 0755 tools/config.sh $(LIBDIR)/tools/config.sh || true
 	install -m 0755 cmd/ubopt $(BINDIR)/ubopt
 	@echo "Installing configuration to /etc/ubopt"
 	install -m 0644 etc/ubopt.example.yaml /etc/ubopt/ubopt.yaml
 	@echo "Installing library and modules to $(LIBDIR)"
 	install -m 0644 lib/common.sh $(LIBDIR)/lib/common.sh
+	install -m 0644 lib/rbac.sh $(LIBDIR)/lib/rbac.sh
 	install -m 0755 providers/*.sh $(LIBDIR)/providers/
 	install -m 0755 modules/*.sh $(LIBDIR)/modules/
 	@echo "Installing exporter"
