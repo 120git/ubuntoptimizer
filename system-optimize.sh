@@ -329,7 +329,7 @@ optimize_system() {
     show_progress "Optimizing I/O scheduler"
     for disk in $(lsblk -d -o name | grep -v "name"); do
         if [ -w "/sys/block/$disk/queue/scheduler" ]; then
-            echo "mq-deadline" | sudo tee "/sys/block/$disk/queue/scheduler" 2>/dev/null || true
+            echo "mq-deadline" | sudo tee "/sys/block/$disk/queue/scheduler" >/dev/null 2>&1 || true
         fi
     done
     
@@ -356,7 +356,7 @@ optimize_system() {
         log "INFO" "Optimizing Snap"
         snap list --all | awk '/disabled/{print $1, $3}' | \
         while read snapname revision; do
-            sudo snap remove "$snapname" --revision="$revision" 2>&1 | sudo tee -a "$LOG_FILE"
+            sudo snap remove "$snapname" --revision="$revision" 2>&1 | sudo tee -a "$LOG_FILE" >/dev/null || true
         done
     fi
     

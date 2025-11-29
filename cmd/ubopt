@@ -7,7 +7,10 @@
 set -Eeuo pipefail
 
 # Determine script directory and library paths
-if [[ -f "/usr/lib/ubopt/lib/common.sh" ]]; then
+if [[ "${UBOPT_USE_SOURCE:-}" == "1" ]]; then
+    # Force running from source (useful for testing)
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." &>/dev/null && pwd)"
+elif [[ -f "/usr/lib/ubopt/lib/common.sh" ]]; then
     # Installed system-wide
     SCRIPT_DIR="/usr/lib/ubopt"
 else
@@ -61,6 +64,8 @@ EOF
 show_help() {
     print_logo
     cat <<'EOF'
+
+Cool Llama Linux Optimizer
 
 Usage: ubopt [OPTIONS] COMMAND [ARGS]
 
@@ -295,8 +300,40 @@ main() {
     unset 'remaining_args[0]'
     remaining_args=("${remaining_args[@]}")
     
-    # RBAC enforcement - check role permission before executing command
-    rbac_enforce "${UBOPT_ROLE}" "${command}"
+    # RBAC enforcement - only for known commands; compute precise action (respect dry-run)
+    case "${command}" in
+        update|hardening|health|backup|benchmark|report)
+            local normalized_action="${command}"
+            local is_dry_run=false
+            # Detect dry-run either from remaining args or global flag already parsed
+            if [[ "${UBOPT_DRY_RUN:-}" == "true" ]]; then
+                is_dry_run=true
+            else
+                for arg in "${remaining_args[@]}"; do
+                    if [[ "$arg" == "--dry-run" ]]; then
+                        is_dry_run=true
+                        break
+                    fi
+                done
+            fi
+            if [[ "${command}" == "update" ]]; then
+                local subcmd="${remaining_args[0]:-check}"
+                if [[ "${is_dry_run}" == true ]]; then
+                    normalized_action="update_check"
+                else
+                    if [[ "$subcmd" == "apply" ]]; then
+                        normalized_action="update_apply"
+                    else
+                        normalized_action="update_check"
+                    fi
+                fi
+            fi
+            rbac_enforce "${UBOPT_ROLE}" "${normalized_action}"
+            ;;
+        *)
+            # Unknown command: skip RBAC so we can show a friendly error
+            ;;
+    esac
     
     # Dispatch to command handler
     case "${command}" in
@@ -320,6 +357,8 @@ main() {
             ;;
         *)
             log_error "Unknown command: ${command}"
+            # Also print to stdout so tests and users see it in normal output
+            echo "Unknown command: ${command}"
             echo ""
             show_help
             exit 1

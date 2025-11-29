@@ -6,7 +6,8 @@ roles:
   admin:
     description: Full system administration access
     permissions:
-      - update
+      - update_check
+      - update_apply
       - hardening
       - backup
       - report
@@ -24,6 +25,7 @@ roles:
       - view_logs
       - backup
       - benchmark
+      - update_check
     inherits: []
 
   auditor:

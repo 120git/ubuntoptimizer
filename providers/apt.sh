@@ -60,11 +60,14 @@ apt_check_security() {
     # Update package lists first
     apt-get update -qq 2>/dev/null || true
     
-    # Check for upgradable packages
+    # Check for upgradable packages (sanitize numeric output)
     local upgradable
     upgradable=$(apt list --upgradable 2>/dev/null | grep -c "upgradable" || echo "0")
+    # Strip non-digits and default to 0 if empty
+    upgradable=$(echo "${upgradable}" | tr -cd '0-9')
+    if [[ -z "${upgradable}" ]]; then upgradable=0; fi
     
-    if [[ "${upgradable}" -gt 0 ]]; then
+    if (( upgradable > 0 )); then
         log_warn "Found ${upgradable} packages with available updates"
         return 20  # Exit code 20 indicates updates available
     else

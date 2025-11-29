@@ -3,10 +3,11 @@ Description=Cool Llama System Update Agent
 Documentation=https://github.com/120git/cool-llama-linuxoptimizer
 After=network-online.target
 Wants=network-online.target
+ConditionPathExists=/usr/bin/ubopt
 
 [Service]
 Type=oneshot
-ExecStart=/usr/local/bin/ubopt update apply --security
+ExecStart=/usr/bin/ubopt update apply --security
 StandardOutput=journal
 StandardError=journal
 SyslogIdentifier=ubopt-agent
