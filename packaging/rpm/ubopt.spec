@@ -1,5 +1,5 @@
 Name:           ubopt
-Version:        0.1.0
+Version:        0.3.1
 Release:        1%{?dist}
 Summary:        Cool Llama LinuxOptimizer CLI and agent
 
@@ -95,6 +95,9 @@ if [ $1 -eq 0 ]; then
 fi
 
 %changelog
+* Sat Nov 29 2025 Cool Llama <team@cool-llama.dev> - 0.3.1-1
+- RBAC and systemd fixes; quieter logs; apt check hardening
+
 * Sat Nov 08 2025 Cool Llama <team@cool-llama.dev> - 0.1.0-1
 - Initial RPM packaging of ubopt
 - CLI, agent, exporter, logrotate integration
